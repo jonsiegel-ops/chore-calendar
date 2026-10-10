@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>Chore Chart</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <h1 id="title">Chore Chart</h1>
+    <div class="when">
+      <div id="day" class="day"></div>
+      <div id="clock" class="clock"></div>
+    </div>
+  </header>
+
+  <main id="board" class="board"></main>
+
+  <div id="offline" class="offline" hidden>Can't reach the chore server — retrying…</div>
+  <div id="confetti" class="confetti" aria-hidden="true"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

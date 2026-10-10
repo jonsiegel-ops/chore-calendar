@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chore Chart Settings</title>
+  <style>
+    :root { --bg: #fff8ef; --card: #fff; --ink: #2b2335; --muted: #8a7f96; --line: #efe4d6; --accent: #4f7cff; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.4 "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    main { max-width: 900px; margin: 0 auto; padding: 16px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    h1 { margin: 8px 0; font-size: 26px; }
+    h2 { margin: 0 0 12px; font-size: 20px; }
+    section { background: var(--card); border-radius: 16px; padding: 16px; margin: 16px 0; box-shadow: 0 4px 14px rgba(80,50,20,.06); }
+    label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+    input[type=text], input[type=password], input[type=number] { width: 100%; padding: 10px; border: 2px solid var(--line); border-radius: 10px; font: inherit; background: #fff; color: var(--ink); }
+    input[type=color] { width: 48px; height: 44px; border: 2px solid var(--line); border-radius: 10px; padding: 2px; background: #fff; }
+    .row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; padding: 12px 0; border-top: 1px solid var(--line); }
+    .row:first-of-type { border-top: 0; }
+    .f-emoji { width: 70px; }
+    .f-name { flex: 1 1 180px; }
+    .f-stars { width: 80px; }
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; flex-basis: 100%; }
+    .chip { border: 2px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 12px; font: inherit; cursor: pointer; color: var(--ink); }
+    .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .chip.kid.on { background: var(--c); border-color: var(--c); }
+    .group-label { flex-basis: 100%; font-size: 13px; color: var(--muted); margin-bottom: -4px; }
+    button.btn { border: 0; border-radius: 10px; padding: 10px 16px; font: inherit; font-weight: 600; cursor: pointer; }
+    .primary { background: var(--accent); color: #fff; }
+    .ghost { background: var(--line); color: var(--ink); }
+    .danger { background: transparent; color: #c0392b; padding: 10px; }
+    .bar { position: sticky; bottom: 0; background: var(--bg); padding: 12px 0; display: flex; gap: 12px; align-items: center; }
+    #status { color: var(--muted); }
+    #status.err { color: #c0392b; }
+    a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>⚙️ Chore Chart Settings</h1>
+      <a href="/">← Back to chart</a>
+    </header>
+
+    <section>
+      <h2>General</h2>
+      <div class="row">
+        <div class="f-name"><label for="title">Chart title</label><input id="title" type="text" maxlength="60"></div>
+        <div class="f-name"><label for="pin">Settings PIN (optional, keeps kids out of here)</label><input id="pin" type="password" maxlength="20" autocomplete="off"></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Kids</h2>
+      <div id="kids"></div>
+      <button class="btn ghost" id="add-kid" type="button">+ Add kid</button>
+    </section>
+
+    <section>
+      <h2>Chores</h2>
+      <div id="chores"></div>
+      <button class="btn ghost" id="add-chore" type="button">+ Add chore</button>
+    </section>
+
+    <div class="bar">
+      <button class="btn primary" id="save" type="button">Save</button>
+      <span id="status"></span>
+    </div>
+  </main>
+  <script src="admin.js"></script>
+</body>
+</html>

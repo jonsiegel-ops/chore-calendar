@@ -1,0 +1,16 @@
+{
+  "title": "Chore Chart",
+  "admin_pin": "",
+  "kids": [
+    { "id": "kid-1", "name": "Kid 1", "emoji": "🦊", "color": "#ff7a45" },
+    { "id": "kid-2", "name": "Kid 2", "emoji": "🐳", "color": "#3b82f6" }
+  ],
+  "chores": [
+    { "id": "make-bed", "title": "Make bed", "emoji": "🛏️", "stars": 1, "kids": ["kid-1", "kid-2"], "days": [0, 1, 2, 3, 4, 5, 6] },
+    { "id": "brush-teeth", "title": "Brush teeth", "emoji": "🪥", "stars": 1, "kids": ["kid-1", "kid-2"], "days": [0, 1, 2, 3, 4, 5, 6] },
+    { "id": "pack-backpack", "title": "Pack backpack", "emoji": "🎒", "stars": 1, "kids": ["kid-1", "kid-2"], "days": [0, 1, 2, 3, 4] },
+    { "id": "feed-pet", "title": "Feed the pet", "emoji": "🐶", "stars": 1, "kids": ["kid-1"], "days": [0, 2, 4, 6] },
+    { "id": "set-table", "title": "Set the table", "emoji": "🍽️", "stars": 1, "kids": ["kid-2"], "days": [0, 1, 2, 3, 4, 5, 6] },
+    { "id": "tidy-room", "title": "Tidy room", "emoji": "🧸", "stars": 2, "kids": ["kid-1", "kid-2"], "days": [5] }
+  ]
+}
