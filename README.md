@@ -10,33 +10,75 @@ screen and hosted on a Raspberry Pi.
 - Chores reset every day on their own. Stars count from Monday to Sunday.
 - The server is plain Python 3 with no packages to install. It runs as a Home Assistant add-on or as a regular service on Raspberry Pi OS.
 
-## 1. Install on the Raspberry Pi
+## Install on Home Assistant OS
 
-### Home Assistant OS (add-on)
+The chart runs as a Home Assistant app. Since Home Assistant 2026.2, add-ons are called
+**Apps**; on older versions, read "Add-on" wherever these steps say "App".
+Your kids, chores and check-offs are stored in the app's own storage, so they survive
+restarts, updates and Home Assistant backups.
 
-The chart runs as a Home Assistant add-on. Your kids, chores and check-offs are stored in the
-add-on's own storage, so they survive restarts, updates and Home Assistant backups.
+### Step 1: Add this repository to Home Assistant
 
-**Option A: local add-on (works while this repo is private)**
+1. On a computer or phone, open Home Assistant (usually `http://homeassistant.local:8123`).
+2. Go to **Settings → Apps**, and open the app store (on older versions: **Settings → Add-ons → Add-on Store**).
+3. Click the **⋮** menu in the top-right corner and choose **Repositories**.
+4. Paste `https://github.com/jonsiegel-ops/chore-calendar`, click **Add**, then **Close**.
 
-1. Install the **Samba share** add-on (or **Studio Code Server** / **Advanced SSH & Web Terminal**)
-   so you can reach the `addons` folder on Home Assistant.
-2. Copy this repo's `chore-chart/` folder into it, so you have `addons/chore-chart/config.yaml`.
-3. Go to **Settings → Add-ons → Add-on Store**, open the **⋮** menu and choose **Check for updates**.
-4. **Chore Chart** shows up under **Local add-ons**. Install it, then click **Start**.
-   (The first install builds the image on the Pi, which takes a minute or two.)
+[![Add repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fjonsiegel-ops%2Fchore-calendar)
 
-**Option B: add-on repository (needs the repo to be public)**
+(Or use this button, which opens the same screen in your Home Assistant.)
 
-1. **Settings → Add-ons → Add-on Store → ⋮ → Repositories**, and add
-   `https://github.com/jonsiegel-ops/chore-calendar`
-2. Install **Chore Chart** and click **Start**. Updates then appear in Home Assistant whenever
-   `version` in `chore-chart/config.yaml` is bumped.
+### Step 2: Install and start the app
 
-Either way, the chart is served at `http://<home-assistant-ip>:8080` (for example
-`http://homeassistant.local:8080` from a phone). Use the IP address on the fridge.
+1. Refresh the store page. If **Chore Chart** doesn't appear, open **⋮ → Check for updates**.
+2. Scroll down to the **Chore Chart add-ons** section and click **Chore Chart**.
+3. Click **Install**. Home Assistant builds the app on the Pi, which takes a few minutes the first time.
+4. On the app's **Info** tab, make sure **Start on boot** is on, and turn on **Watchdog**
+   so Home Assistant restarts the app if it ever crashes.
+5. Click **Start**.
+6. Open the **Log** tab. You should see `Chore chart running on http://0.0.0.0:8080`.
 
-### Raspberry Pi OS (no Home Assistant)
+### Step 3: Find (and lock in) the Pi's IP address
+
+1. Go to **Settings → System → Network** and note the **IPv4** address, for example `192.168.1.50`.
+2. Make sure that address never changes, or the fridge's bookmark will stop working. Either:
+   - add a **DHCP reservation** for the Pi in your router's settings (recommended), or
+   - set the IPv4 address to **Static** on that same Network page.
+
+### Step 4: Set up your kids and chores (on your phone)
+
+1. Connect your phone to your home Wi-Fi and open `http://192.168.1.50:8080/admin`, using your Pi's IP.
+2. Rename "Kid 1" and "Kid 2", and pick an emoji and color for each kid.
+3. Edit the sample chores. For each one, choose who does it, which days it happens, and how many stars it's worth.
+4. Optionally, set a **Settings PIN** so the kids can't edit their own chores from the fridge.
+5. Click **Save**.
+
+### Step 5: Put it on the fridge
+
+1. On the Family Hub screen, open the **Internet** app.
+2. In the address bar, type the full address, including `http://`, for example `http://192.168.1.50:8080`.
+3. Bookmark the page (and add it to the home screen if your model offers that) so the kids can open it with one tap.
+
+The page refreshes itself every 20 seconds and reloads overnight, so you can leave it open.
+Changes made on a phone show up on the fridge automatically.
+
+### Updating
+
+When the app changes, Home Assistant shows an update under **Settings → Updates** (and on the app's page).
+Click **Update**. Your kids, chores and stars are kept.
+
+### Troubleshooting
+
+| Problem | Fix |
+| --- | --- |
+| The repository won't add | Check the URL exactly as written above, with no `.git` on the end. |
+| Chore Chart isn't in the store | Refresh the page, or use **⋮ → Check for updates**. |
+| Install fails | Check **Settings → System → Logs**, choosing **Supervisor** in the log picker. |
+| The page doesn't load on the fridge | Type `http://` in full, and make sure the fridge is on the same Wi-Fi network as the Pi, not a guest network. |
+| Port 8080 is already in use | Change the port on the app's **Configuration** tab under **Network**, then use the new port in the address. |
+| Chores reset at the wrong time | Set your time zone in **Settings → System → General**, then restart the app. |
+
+## Install on Raspberry Pi OS (no Home Assistant)
 
 ```bash
 git clone https://github.com/jonsiegel-ops/chore-calendar.git
@@ -44,27 +86,8 @@ cd chore-calendar
 ./deploy/install.sh          # optional: ./deploy/install.sh 8080
 ```
 
-This installs a systemd service, so the chart starts at boot and restarts if it crashes.
-
-**Either way, give the Pi a fixed IP.** In your router's settings, add a DHCP reservation for it
-so the fridge's bookmark keeps working. Not every built-in browser can resolve `.local` names.
-
-## 2. Show it on the fridge
-
-1. On the Family Hub screen, open the **Internet** (browser) app.
-2. Go to `http://<pi-ip>:8080`.
-3. Bookmark it, or add it to the home screen if your model offers that, so the kids can get back to it with one tap.
-
-The page refreshes itself every 20 seconds and reloads overnight, so you can leave it open.
-Changes made from a phone show up on the fridge automatically.
-
-## 3. Customize
-
-On your phone, open `http://<pi-ip>:8080/admin` and replace the placeholder kids
-("Kid 1", "Kid 2") and chores with your own. Set a **Settings PIN** if you don't want
-the kids editing chores from the fridge.
-
-Chores reset at midnight in your Home Assistant time zone (on Raspberry Pi OS, the Pi's time zone).
+This installs a systemd service that starts at boot. Then follow steps 3–5 above,
+using the address the script prints.
 
 ## Running locally
 
