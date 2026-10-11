@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>Weekly Stats</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <a class="nav-btn back" href="/">← Chart</a>
+    <div class="week-nav">
+      <button id="prev" class="nav-btn arrow" type="button" aria-label="Previous week">‹</button>
+      <h1 id="week">This week</h1>
+      <button id="next" class="nav-btn arrow" type="button" aria-label="Next week">›</button>
+    </div>
+    <div class="when"><div id="range" class="clock"></div></div>
+  </header>
+
+  <main id="stats" class="board"></main>
+
+  <div id="offline" class="offline" hidden>Can't reach the chore server — retrying…</div>
+
+  <script src="stats.js"></script>
+</body>
+</html>

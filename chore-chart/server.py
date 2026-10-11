@@ -15,7 +15,7 @@ import re
 import shutil
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(ROOT, "static")
@@ -102,6 +102,49 @@ def build_board(config, state, day):
         "title": config.get("title", "Chore Chart"),
         "date": day.isoformat(),
         "weekday": WEEKDAYS[day.weekday()],
+        "kids": kids,
+    }
+
+
+def build_stats(config, state, any_day, today):
+    """Chores done per kid per day for the Monday-Sunday week containing any_day."""
+    week_start = any_day - datetime.timedelta(days=any_day.weekday())
+    days = [week_start + datetime.timedelta(days=i) for i in range(7)]
+    points = {c["id"]: c.get("stars", 1) for c in config["chores"]}
+    oldest = today - datetime.timedelta(days=KEEP_DAYS)
+
+    kids = []
+    for kid in config["kids"]:
+        per_day = []
+        for d in days:
+            done = state["done"].get(d.isoformat(), {}).get(kid["id"], [])
+            per_day.append({
+                "done": len(done),
+                "stars": sum(points.get(cid, 1) for cid in done),
+                # Uses today's chore list, so edits to chores also change past weeks' totals.
+                "assigned": len(chores_for(config, kid["id"], d)) if d <= today else None,
+            })
+        kids.append({
+            "id": kid["id"],
+            "name": kid["name"],
+            "emoji": kid.get("emoji", ""),
+            "color": kid.get("color", "#4f7cff"),
+            "done": sum(p["done"] for p in per_day),
+            "assigned": sum(p["assigned"] or 0 for p in per_day),
+            "stars": sum(p["stars"] for p in per_day),
+            "days": per_day,
+        })
+
+    return {
+        "title": config.get("title", "Chore Chart"),
+        "week_start": week_start.isoformat(),
+        "is_current": week_start <= today <= days[-1],
+        "has_prev": week_start - datetime.timedelta(days=1) >= oldest,
+        "has_next": days[-1] < today,
+        "days": [
+            {"date": d.isoformat(), "label": WEEKDAYS[d.weekday()][:3], "today": d == today, "future": d > today}
+            for d in days
+        ],
         "kids": kids,
     }
 
@@ -223,6 +266,15 @@ class Handler(SimpleHTTPRequestHandler):
         if path == "/api/board":
             with lock:
                 self.send_json(build_board(load_config(), load_state(), datetime.date.today()))
+        elif path == "/api/stats":
+            today = datetime.date.today()
+            week = parse_qs(urlparse(self.path).query).get("week", [""])[0]
+            try:
+                day = datetime.date.fromisoformat(week) if week else today
+            except ValueError:
+                return self.send_json({"error": "Bad week date"}, 400)
+            with lock:
+                self.send_json(build_stats(load_config(), load_state(), day, today))
         elif path == "/api/config":
             config = load_config()
             if not self.admin_ok(config):
@@ -230,6 +282,9 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_json(config)
         elif path in ("/admin", "/settings"):
             self.path = "/admin.html"
+            super().do_GET()
+        elif path == "/stats":
+            self.path = "/stats.html"
             super().do_GET()
         else:
             super().do_GET()

@@ -5,7 +5,10 @@ screen and hosted on a Raspberry Pi.
 
 - **Fridge view** (`/`): one column per kid with today's chores. Kids tap a chore to check it off
   (tap again to undo). It shows weekly stars and a progress bar, and plays confetti when a kid finishes everything.
-- **Settings** (`/admin`): add or remove kids and chores, choose which days each chore
+- **Weekly stats** (`/stats`, the **📊 This week** button): how many chores each kid has done this week,
+  out of how many so far, with a day-by-day bar chart. Use the arrows to look back at earlier weeks
+  (history is kept for about 90 days). The screen returns to the chart after 3 minutes untouched.
+- **Settings** (`/admin`, the **⚙️** button): add or remove kids and chores, choose which days each chore
   happens, set star values, and set an optional PIN. This page is easiest to use from your phone.
 - Chores reset every day on their own. Stars count from Monday to Sunday.
 - The server is plain Python 3 with no packages to install. It runs as a Home Assistant add-on or as a regular service on Raspberry Pi OS.
