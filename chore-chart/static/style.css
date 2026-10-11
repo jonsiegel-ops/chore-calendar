@@ -299,14 +299,15 @@ body { display: flex; flex-direction: column; height: var(--app-height, 100%); }
 .wk-day.today .wk-label { color: var(--ink); background: #fff4cc; border-radius: 999px; padding: 0 0.5em; }
 .wk-day.future { opacity: 0.35; }
 
-/* ---------- today's events on the chart ---------- */
+/* ---------- today's events on the chart (above the chores, so the browser's
+   bottom toolbar on the fridge can't cover it) ---------- */
 
 .today-cal {
   display: block;
   flex: none;
-  max-height: 28vh;
+  max-height: 24vh;
   overflow-y: auto;
-  margin: -1vh 2.5vw 2.5vh;
+  margin: 0 2.5vw 1.6vh;
   padding: 1.4vmin 2vmin;
   background: var(--card);
   border-radius: var(--radius);
