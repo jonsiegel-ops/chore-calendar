@@ -1,3 +1,4 @@
+/* Sizes use vmin (the screen's shorter side) so text fits in both landscape and portrait. */
 :root {
   --bg: #fff8ef;
   --card: #ffffff;
@@ -36,7 +37,7 @@ body { display: flex; flex-direction: column; }
 
 .top h1 {
   margin: 0;
-  font-size: clamp(26px, 4.5vh, 56px);
+  font-size: clamp(26px, 4.5vmin, 56px);
   font-weight: 800;
   letter-spacing: -0.02em;
 }
@@ -54,7 +55,7 @@ body { display: flex; flex-direction: column; }
   background: var(--card);
   color: var(--ink);
   border: 2px solid var(--line);
-  font-size: clamp(16px, 2.4vh, 28px);
+  font-size: clamp(16px, 2.4vmin, 28px);
   font-weight: 700;
   text-decoration: none;
   white-space: nowrap;
@@ -63,8 +64,8 @@ body { display: flex; flex-direction: column; }
 .nav-btn.icon-only { padding: 0.8vh 0.9vw; }
 
 .when { text-align: right; line-height: 1.1; }
-.day { font-size: clamp(18px, 3vh, 36px); font-weight: 700; }
-.clock { font-size: clamp(14px, 2.3vh, 28px); color: var(--muted); font-variant-numeric: tabular-nums; }
+.day { font-size: clamp(18px, 3vmin, 36px); font-weight: 700; }
+.clock { font-size: clamp(14px, 2.3vmin, 28px); color: var(--muted); font-variant-numeric: tabular-nums; }
 
 /* ---------- board ---------- */
 
@@ -96,14 +97,14 @@ body { display: flex; flex-direction: column; }
 }
 
 .avatar {
-  font-size: clamp(32px, 6vh, 72px);
+  font-size: clamp(32px, 6vmin, 72px);
   line-height: 1;
 }
 
 .kid-name {
   flex: 1;
   min-width: 0;
-  font-size: clamp(22px, 4vh, 48px);
+  font-size: clamp(22px, 4vmin, 48px);
   font-weight: 800;
   color: var(--kid);
   white-space: nowrap;
@@ -112,7 +113,7 @@ body { display: flex; flex-direction: column; }
 }
 
 .stars {
-  font-size: clamp(16px, 2.6vh, 30px);
+  font-size: clamp(16px, 2.6vmin, 30px);
   font-weight: 800;
   background: #fff4cc;
   color: #8a6300;
@@ -168,19 +169,19 @@ body { display: flex; flex-direction: column; }
 
 .chore:active { transform: scale(0.97); }
 
-.chore .icon { font-size: clamp(26px, 4.4vh, 52px); line-height: 1; width: 1.4em; text-align: center; }
-.chore .label { flex: 1; min-width: 0; font-size: clamp(18px, 3.2vh, 38px); font-weight: 700; }
-.chore .pts { font-size: clamp(13px, 2vh, 24px); color: var(--muted); font-weight: 700; white-space: nowrap; }
+.chore .icon { font-size: clamp(26px, 4.4vmin, 52px); line-height: 1; width: 1.4em; text-align: center; }
+.chore .label { flex: 1; min-width: 0; font-size: clamp(18px, 3.2vmin, 38px); font-weight: 700; }
+.chore .pts { font-size: clamp(13px, 2vmin, 24px); color: var(--muted); font-weight: 700; white-space: nowrap; }
 
 .chore .check {
   flex: none;
-  width: clamp(34px, 5.5vh, 64px);
-  height: clamp(34px, 5.5vh, 64px);
+  width: clamp(34px, 5.5vmin, 64px);
+  height: clamp(34px, 5.5vmin, 64px);
   border-radius: 50%;
   border: 4px solid var(--line);
   display: grid;
   place-items: center;
-  font-size: clamp(20px, 3.4vh, 40px);
+  font-size: clamp(20px, 3.4vmin, 40px);
   font-weight: 900;
   color: transparent;
   transition: all 0.2s ease;
@@ -209,7 +210,7 @@ body { display: flex; flex-direction: column; }
   background: var(--kid);
   color: #fff;
   text-align: center;
-  font-size: clamp(20px, 3.4vh, 40px);
+  font-size: clamp(20px, 3.4vmin, 40px);
   font-weight: 800;
 }
 
@@ -217,14 +218,14 @@ body { display: flex; flex-direction: column; }
   margin: auto;
   padding: 2vh;
   color: var(--muted);
-  font-size: clamp(16px, 2.6vh, 30px);
+  font-size: clamp(16px, 2.6vmin, 30px);
   text-align: center;
 }
 
 .setup {
   margin: auto;
   text-align: center;
-  font-size: clamp(18px, 3vh, 34px);
+  font-size: clamp(18px, 3vmin, 34px);
   color: var(--muted);
 }
 .setup a { color: var(--ink); }
@@ -240,7 +241,7 @@ body { display: flex; flex-direction: column; }
   color: #fff;
   padding: 1vh 2vw;
   border-radius: 999px;
-  font-size: clamp(14px, 2vh, 24px);
+  font-size: clamp(14px, 2vmin, 24px);
 }
 
 .confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
@@ -262,14 +263,14 @@ body { display: flex; flex-direction: column; }
 
 .week-nav { flex: 1; display: flex; align-items: center; justify-content: center; gap: 1.2vw; min-width: 0; }
 .week-nav h1 { flex: none; text-align: center; }
-.nav-btn.arrow { font-size: clamp(26px, 4vh, 48px); line-height: 1; padding: 0.2vh 1.4vw 0.8vh; cursor: pointer; font-family: inherit; }
+.nav-btn.arrow { font-size: clamp(26px, 4vmin, 48px); line-height: 1; padding: 0.2vh 1.4vw 0.8vh; cursor: pointer; font-family: inherit; }
 .nav-btn.arrow:disabled { opacity: 0.3; }
 .top .back { margin-right: 1.6vw; }
 
 .stat-total { display: flex; align-items: center; gap: 1.2vw; padding: 1vh 1.6vw 0; }
-.stat-number { font-size: clamp(56px, 13vh, 150px); font-weight: 900; line-height: 1; color: var(--kid); font-variant-numeric: tabular-nums; }
-.stat-label { font-size: clamp(18px, 3vh, 36px); font-weight: 800; }
-.stat-of { font-size: clamp(14px, 2.3vh, 28px); color: var(--muted); font-weight: 700; }
+.stat-number { font-size: clamp(56px, 13vmin, 150px); font-weight: 900; line-height: 1; color: var(--kid); font-variant-numeric: tabular-nums; }
+.stat-label { font-size: clamp(18px, 3vmin, 36px); font-weight: 800; }
+.stat-of { font-size: clamp(14px, 2.3vmin, 28px); color: var(--muted); font-weight: 700; }
 
 .week-chart {
   flex: 1;
@@ -280,7 +281,7 @@ body { display: flex; flex-direction: column; }
 }
 
 .wk-day { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 0.6vh; }
-.wk-count { font-size: clamp(12px, 1.9vh, 22px); font-weight: 800; color: var(--muted); min-height: 1.3em; }
+.wk-count { font-size: clamp(12px, 1.9vmin, 22px); font-weight: 800; color: var(--muted); min-height: 1.3em; }
 .wk-track { position: relative; flex: 1; width: 100%; max-width: 70px; }
 
 .wk-goal, .wk-bar {
@@ -294,9 +295,18 @@ body { display: flex; flex-direction: column; }
 .wk-bar { background: var(--kid); opacity: 0.55; min-height: 0; transition: height 0.4s ease; }
 .wk-bar.full { opacity: 1; }
 
-.wk-label { font-size: clamp(13px, 2vh, 24px); font-weight: 800; color: var(--muted); }
+.wk-label { font-size: clamp(13px, 2vmin, 24px); font-weight: 800; color: var(--muted); }
 .wk-day.today .wk-label { color: var(--ink); background: #fff4cc; border-radius: 999px; padding: 0 0.5em; }
 .wk-day.future { opacity: 0.35; }
+
+/* Tall screens (like a Family Hub fridge): use the extra height for bigger tap targets. */
+@media (orientation: portrait) and (min-width: 701px) {
+  .chores { gap: 1.4vh; }
+  .chore { padding: 2.2vh 1.6vw; }
+  .chore .label { font-size: clamp(18px, 3.8vmin, 44px); }
+  .chore .icon { font-size: clamp(26px, 5.2vmin, 60px); }
+  .chore .check { width: clamp(34px, 6.4vmin, 72px); height: clamp(34px, 6.4vmin, 72px); }
+}
 
 /* Narrow screens (phones): stack kids vertically and let the page scroll. */
 @media (max-width: 700px) {
