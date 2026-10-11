@@ -5,6 +5,8 @@ screen and hosted on a Raspberry Pi.
 
 - **Fridge view** (`/`): one column per kid with today's chores. Kids tap a chore to check it off
   (tap again to undo). It shows weekly stars and a progress bar, and plays confetti when a kid finishes everything.
+  Once a calendar is set up, today's events appear in a panel at the bottom (finished ones fade out);
+  tap it to open the full calendar.
 - **Weekly stats** (`/stats`, the **📊 This week** button): how many chores each kid has done this week,
   out of how many so far, with a day-by-day bar chart. Use the arrows to look back at earlier weeks
   (history is kept for about 90 days). The screen returns to the chart after 3 minutes untouched.

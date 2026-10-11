@@ -302,7 +302,11 @@ class Handler(SimpleHTTPRequestHandler):
             # Fetching feeds can be slow, so don't hold the chore-data lock while doing it.
             with lock:
                 calendars = load_config().get("calendars", [])
-            self.send_json(agenda.agenda(calendars, CALENDAR_CACHE_DIR))
+            try:
+                days = max(1, min(31, int(parse_qs(urlparse(self.path).query).get("days", ["14"])[0])))
+            except ValueError:
+                days = 14
+            self.send_json(agenda.agenda(calendars, CALENDAR_CACHE_DIR, days))
         elif path == "/api/ha-calendars":
             if not self.admin_ok(load_config()):
                 return self.send_json({"error": "PIN required"}, 401)

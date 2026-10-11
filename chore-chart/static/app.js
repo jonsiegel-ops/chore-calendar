@@ -3,6 +3,7 @@
   "use strict";
 
   var POLL_MS = 20000;
+  var CALENDAR_MS = 5 * 60 * 1000;
   var board = null;
   var busy = {};
   var loadedAt = Date.now();
@@ -13,6 +14,9 @@
   var $clock = document.getElementById("clock");
   var $offline = document.getElementById("offline");
   var $confetti = document.getElementById("confetti");
+  var $todayCal = document.getElementById("today-cal");
+  var $todayEvents = document.getElementById("today-events");
+  var todayEvents = null;
 
   function el(tag, cls, text) {
     var n = document.createElement(tag);
@@ -152,6 +156,44 @@
 
   function pad(n) { return n < 10 ? "0" + n : "" + n; }
 
+  // ---------- today's calendar events ----------
+
+  function time12(hhmm) {
+    var p = hhmm.split(":"), h = +p[0];
+    return ((h + 11) % 12 + 1) + (p[1] === "00" ? "" : ":" + p[1]) + (h < 12 ? " am" : " pm");
+  }
+
+  function eventLabel(ev) {
+    if (ev.all_day) return "All day";
+    if (!ev.start) return "until " + time12(ev.end);
+    return time12(ev.start) + (ev.end ? " – " + time12(ev.end) : "");
+  }
+
+  function renderToday() {
+    if (!todayEvents) return;
+    var now = new Date();
+    var nowHHMM = pad(now.getHours()) + ":" + pad(now.getMinutes());
+    $todayEvents.innerHTML = "";
+    if (!todayEvents.length) $todayEvents.appendChild(el("div", "today-empty", "Nothing on the calendar today"));
+    todayEvents.forEach(function (ev) {
+      // Fade out events that are over (timed events only; all-day ones last all day).
+      var over = !ev.all_day && (ev.end || ev.start) < nowHHMM;
+      var row = el("div", "today-event" + (over ? " over" : ""));
+      row.style.setProperty("--cal", ev.color);
+      row.appendChild(el("span", "today-time", eventLabel(ev)));
+      row.appendChild(el("span", "today-title", ev.title));
+      $todayEvents.appendChild(row);
+    });
+  }
+
+  function loadToday() {
+    return api("GET", "/api/calendar?days=1").then(function (data) {
+      $todayCal.hidden = !data.configured;
+      todayEvents = data.days.length ? data.days[0].events : [];
+      renderToday();
+    }, function () { /* keep showing what we had */ });
+  }
+
   function tick() {
     var now = new Date();
     var h = now.getHours();
@@ -159,15 +201,18 @@
 
     // New day: fetch the fresh board right away instead of waiting for the poll.
     var today = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-" + pad(now.getDate());
-    if (board && board.date !== today && now.getSeconds() % 10 === 0) refresh();
+    if (board && board.date !== today && now.getSeconds() % 10 === 0) { refresh(); loadToday(); }
+    if (now.getSeconds() === 0) renderToday(); // fade events as they finish
 
     // A fridge never closes its tabs; reload overnight to stay fresh.
     if (h === 3 && Date.now() - loadedAt > 6 * 3600 * 1000) location.reload();
   }
 
   refresh();
+  loadToday();
   tick();
   setInterval(tick, 1000);
   setInterval(refresh, POLL_MS);
+  setInterval(loadToday, CALENDAR_MS);
   document.addEventListener("visibilitychange", function () { if (!document.hidden) refresh(); });
 })();
