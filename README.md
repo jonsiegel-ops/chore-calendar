@@ -9,8 +9,8 @@ screen and hosted on a Raspberry Pi.
   out of how many so far, with a day-by-day bar chart. Use the arrows to look back at earlier weeks
   (history is kept for about 90 days). The screen returns to the chart after 3 minutes untouched.
 - **Calendar** (`/calendar`, the **📅 Calendar** button): the next two weeks from one or more
-  iCloud calendars (or any calendar with an iCal link), refreshed every 15 minutes.
-  See [Adding an iCloud calendar](#adding-an-icloud-calendar).
+  calendars. Use private iCloud calendars through Home Assistant, or any public calendar link.
+  See [Adding a private iCloud calendar](#adding-a-private-icloud-calendar).
 - **Settings** (`/admin`, the **⚙️** button): add or remove kids and chores, choose which days each chore
   happens, set star values, and set an optional PIN. This page is easiest to use from your phone.
 - Chores reset every day on their own. Stars count from Monday to Sunday.
@@ -68,17 +68,46 @@ restarts, updates and Home Assistant backups.
 The page refreshes itself every 20 seconds and reloads overnight, so you can leave it open.
 Changes made on a phone show up on the fridge automatically.
 
-### Adding an iCloud calendar
+### Adding a private iCloud calendar
+
+Home Assistant connects to iCloud and the chart reads the calendars from Home Assistant,
+so your Apple credentials stay in Home Assistant and the chart never sees them.
+
+**1. Create an app-specific password for Home Assistant**
+
+1. Sign in at [account.apple.com](https://account.apple.com) with your Apple ID.
+2. Under **Sign-In and Security**, choose **App-Specific Passwords**, then **+**.
+3. Name it `Home Assistant` and copy the password Apple shows you (it's only shown once).
+
+This password only works for things like calendars and contacts, not for signing in to your Apple account.
+You can revoke it on the same page at any time.
+
+**2. Add iCloud to Home Assistant**
+
+1. Go to **Settings → Devices & services → Add integration** and choose **CalDAV**.
+2. Enter:
+   - **URL:** `https://caldav.icloud.com`
+   - **Username:** your Apple ID email address
+   - **Password:** the app-specific password from step 1
+3. Submit. Your iCloud calendars appear in Home Assistant as `calendar.…` entities.
+
+**3. Show them on the fridge**
+
+1. Open the chart's settings (`/admin`, or the ⚙️ button) and scroll to **Calendars**.
+2. Tap **+ Home Assistant calendar**, pick a calendar, choose a color, and tap **Save**.
+   Repeat for each calendar you want on the fridge.
+
+New events can take up to about 15 minutes to appear, since Home Assistant checks iCloud periodically.
+
+### Using a public calendar link instead
+
+This works without Home Assistant, but anyone who has the link can see the calendar.
 
 1. On your iPhone, open the **Calendar** app and tap **Calendars**.
-2. Tap the **ⓘ** next to the calendar you want on the fridge.
-3. Turn on **Public Calendar**, tap **Share Link…**, then **Copy**.
-4. On the chart's settings page (`/admin`), under **Calendars**, tap **+ Add calendar**,
-   give it a name and color, paste the link and tap **Save**.
+2. Tap the **ⓘ** next to the calendar, turn on **Public Calendar**, tap **Share Link…**, then **Copy**.
+3. In the chart's settings under **Calendars**, tap **+ Calendar link**, paste the link, name it and tap **Save**.
 
-Repeat for each calendar. Anyone who has a public calendar link can see that calendar,
-so don't post it anywhere. To stop sharing, turn **Public Calendar** off again.
-New events show up on the fridge within about 15 minutes.
+To stop sharing, turn **Public Calendar** off again.
 
 ### Updating
 
@@ -94,7 +123,8 @@ Click **Update**. Your kids, chores and stars are kept.
 | Install fails | Check **Settings → System → Logs**, choosing **Supervisor** in the log picker. |
 | The page doesn't load on the fridge | Type `http://` in full, and make sure the fridge is on the same Wi-Fi network as the Pi, not a guest network. |
 | Port 8080 is already in use | Change the port on the app's **Configuration** tab under **Network**, then use the new port in the address. |
-| The calendar says "Couldn't update" | Check the link in Settings, and check that **Public Calendar** is still on for that calendar. The app's **Log** tab shows the exact error. The fridge keeps showing the last copy it got. |
+| The calendar says "Couldn't update" | For a Home Assistant calendar, check that the CalDAV integration is working under **Settings → Devices & services**. For a link, check that **Public Calendar** is still on. The app's **Log** tab shows the exact error. The fridge keeps showing the last copy it got. |
+| **+ Home Assistant calendar** is missing in Settings | It only appears when the chart runs as a Home Assistant app. Update the app to 1.3.0 or later and restart it. |
 | Chores reset at the wrong time | Set your time zone in **Settings → System → General**, then restart the app. |
 
 ## Install on Raspberry Pi OS (no Home Assistant)

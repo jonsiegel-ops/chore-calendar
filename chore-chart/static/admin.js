@@ -4,6 +4,7 @@
   var DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   var PALETTE = ["#ff7a45", "#3b82f6", "#22b573", "#a259ff", "#ff4f8b", "#f5b700"];
   var config = null;
+  var haCalendars = []; // calendar entities in Home Assistant, when running as an app
   var pin = sessionStorageGet("chorePin");
 
   var $kids = document.getElementById("kids");
@@ -43,8 +44,8 @@
     $status.className = isErr ? "err" : "";
   }
 
-  function request(method, body) {
-    return fetch("/api/config", {
+  function request(method, body, path) {
+    return fetch(path || "/api/config", {
       method: method,
       headers: { "Content-Type": "application/json", "X-Admin-Pin": pin },
       body: body ? JSON.stringify(body) : undefined,
@@ -55,7 +56,7 @@
         if (entered === null) throw new Error("PIN required");
         pin = entered;
         sessionStorageSet("chorePin", pin);
-        return request(method, body);
+        return request(method, body, path);
       }
       return res.json().then(function (data) {
         if (!res.ok) throw new Error(data.error || res.statusText);
@@ -136,6 +137,27 @@
     });
   }
 
+  function haPicker(cal) {
+    var select = document.createElement("select");
+    var options = haCalendars.slice();
+    if (cal.entity_id && !options.some(function (c) { return c.entity_id === cal.entity_id; })) {
+      options.unshift({ entity_id: cal.entity_id, name: cal.entity_id + " (not found)" });
+    }
+    if (!cal.entity_id) select.appendChild(el("option", null, "Choose a calendar…")).value = "";
+    options.forEach(function (c) {
+      var opt = el("option", null, c.name);
+      opt.value = c.entity_id;
+      opt.selected = c.entity_id === cal.entity_id;
+      select.appendChild(opt);
+    });
+    select.addEventListener("change", function () {
+      cal.entity_id = select.value;
+      var picked = haCalendars.filter(function (c) { return c.entity_id === select.value; })[0];
+      if (picked && !cal.name) { cal.name = picked.name; renderCalendars(); }
+    });
+    return select;
+  }
+
   function renderCalendars() {
     $calendars.innerHTML = "";
     config.calendars.forEach(function (cal, idx) {
@@ -146,10 +168,14 @@
       del.type = "button";
       del.addEventListener("click", function () { config.calendars.splice(idx, 1); renderCalendars(); });
       row.appendChild(del);
-      var url = textInput(cal.url || "", function (v) { cal.url = v.trim(); });
-      url.placeholder = "webcal://p…-caldav.icloud.com/published/2/…";
-      url.autocomplete = "off";
-      row.appendChild(field("f-url", "Calendar link", url));
+      if (cal.source === "ha") {
+        row.appendChild(field("f-url", "Home Assistant calendar", haPicker(cal)));
+      } else {
+        var url = textInput(cal.url || "", function (v) { cal.url = v.trim(); });
+        url.placeholder = "webcal://p…-caldav.icloud.com/published/2/…";
+        url.autocomplete = "off";
+        row.appendChild(field("f-url", "Calendar link", url));
+      }
       $calendars.appendChild(row);
     });
   }
@@ -182,9 +208,28 @@
   });
 
   document.getElementById("add-calendar").addEventListener("click", function () {
-    config.calendars.push({ name: "", url: "", color: PALETTE[(config.calendars.length + 2) % PALETTE.length] });
+    config.calendars.push({ source: "ical", name: "", url: "", color: PALETTE[(config.calendars.length + 2) % PALETTE.length] });
     renderCalendars();
   });
+
+  document.getElementById("add-ha-calendar").addEventListener("click", function () {
+    config.calendars.push({ source: "ha", name: "", entity_id: "", color: PALETTE[(config.calendars.length + 2) % PALETTE.length] });
+    renderCalendars();
+  });
+
+  function loadHaCalendars() {
+    var $btn = document.getElementById("add-ha-calendar");
+    var $status = document.getElementById("ha-status");
+    return request("GET", null, "/api/ha-calendars").then(function (data) {
+      haCalendars = data.calendars;
+      $btn.hidden = !data.available;
+      if (data.error) $status.textContent = data.error;
+      else if (data.available && !haCalendars.length) {
+        $status.textContent = "Home Assistant has no calendars yet. Add the CalDAV integration first.";
+      }
+      renderCalendars();
+    }, function () { /* calendar links still work */ });
+  }
 
   document.getElementById("save").addEventListener("click", function () {
     status("Saving…");
@@ -202,5 +247,6 @@
     config = data;
     config.calendars = config.calendars || [];
     renderAll();
+    loadHaCalendars();
   }, function (e) { status(e.message, true); });
 })();

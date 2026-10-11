@@ -1,5 +1,5 @@
 name: Chore Chart
-version: "1.2.0"
+version: "1.3.0"
 slug: chore_chart
 description: Touch-friendly kids chore chart for a fridge or wall display
 url: https://github.com/jonsiegel-ops/chore-calendar
@@ -7,6 +7,9 @@ arch:
   - aarch64
   - amd64
 startup: application
+# Lets the app read calendars that Home Assistant knows about (e.g. private iCloud
+# calendars added with the CalDAV integration). No other access is used.
+homeassistant_api: true
 boot: auto
 ports:
   8080/tcp: 8080

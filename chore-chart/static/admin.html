@@ -36,6 +36,7 @@
     a { color: var(--accent); }
     .hint { color: var(--muted); font-size: 14px; margin: 0 0 8px; }
     .f-url { flex: 1 1 100%; }
+    select { width: 100%; padding: 10px; border: 2px solid var(--line); border-radius: 10px; font: inherit; background: #fff; color: var(--ink); }
   </style>
 </head>
 <body>
@@ -68,13 +69,20 @@
     <section>
       <h2>Calendars</h2>
       <p class="hint">
-        To show an iCloud calendar on the fridge: on your iPhone, open the <b>Calendar</b> app, tap
+        <b>Private iCloud calendars</b> (running as a Home Assistant app): first add iCloud to
+        Home Assistant with its <b>CalDAV</b> integration (see the README), then tap
+        <b>+ Home Assistant calendar</b> and pick the calendar.
+      </p>
+      <p class="hint">
+        <b>Public calendar link:</b> on your iPhone, open the <b>Calendar</b> app, tap
         <b>Calendars</b>, then the <b>ⓘ</b> next to the calendar. Turn on <b>Public Calendar</b>, tap
-        <b>Share Link…</b> and <b>Copy</b>, then paste the link below.
-        Anyone with that link can see the calendar, so only share it with people you trust.
+        <b>Share Link…</b> and <b>Copy</b>, then tap <b>+ Calendar link</b> and paste it.
+        Anyone with that link can see the calendar.
       </p>
       <div id="calendars"></div>
-      <button class="btn ghost" id="add-calendar" type="button">+ Add calendar</button>
+      <button class="btn ghost" id="add-ha-calendar" type="button" hidden>+ Home Assistant calendar</button>
+      <button class="btn ghost" id="add-calendar" type="button">+ Calendar link</button>
+      <p class="hint" id="ha-status"></p>
     </section>
 
     <div class="bar">

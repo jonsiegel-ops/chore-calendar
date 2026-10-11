@@ -2,7 +2,7 @@
 """Chore chart server.
 
 Serves the fridge display (static/) and a small JSON API. Everything but the
-calendar view (ical_feed.py, see requirements.txt) uses only the standard library.
+calendar view (agenda.py, see requirements.txt) uses only the standard library.
 
 Data lives in data/config.json (kids, chores, calendars) and data/state.json
 (what has been checked off, keyed by date).
@@ -17,7 +17,7 @@ import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
-import ical_feed
+import agenda
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(ROOT, "static")
@@ -227,13 +227,21 @@ def clean_config(raw):
     calendars, cal_ids = [], set()
     for c in raw.get("calendars", []):
         name = str(c.get("name", "")).strip() or "Calendar"
-        url = ical_feed.normalize_url(str(c.get("url", "")))
-        if not re.match(r"https?://", url, re.I):
-            raise ValueError(f"The link for calendar “{name}” should start with webcal:// or https://")
         color = str(c.get("color", "#4f7cff"))
         if not re.fullmatch(r"#[0-9a-fA-F]{6}", color):
             color = "#4f7cff"
-        calendars.append({"id": pick_id(c.get("id"), name, cal_ids), "name": name[:40], "color": color, "url": url[:2000]})
+        cal = {"id": pick_id(c.get("id"), name, cal_ids), "name": name[:40], "color": color}
+        if c.get("source") == "ha":
+            entity_id = str(c.get("entity_id", "")).strip()
+            if not re.fullmatch(r"calendar\.[a-z0-9_]+", entity_id):
+                raise ValueError(f"Pick a Home Assistant calendar for “{name}”")
+            cal.update(source="ha", entity_id=entity_id)
+        else:
+            url = agenda.normalize_url(str(c.get("url", "")))
+            if not re.match(r"https?://", url, re.I):
+                raise ValueError(f"The link for calendar “{name}” should start with webcal:// or https://")
+            cal.update(source="ical", url=url[:2000])
+        calendars.append(cal)
 
     return {
         "title": str(raw.get("title", "Chore Chart")).strip()[:60] or "Chore Chart",
@@ -294,7 +302,15 @@ class Handler(SimpleHTTPRequestHandler):
             # Fetching feeds can be slow, so don't hold the chore-data lock while doing it.
             with lock:
                 calendars = load_config().get("calendars", [])
-            self.send_json(ical_feed.agenda(calendars, CALENDAR_CACHE_DIR))
+            self.send_json(agenda.agenda(calendars, CALENDAR_CACHE_DIR))
+        elif path == "/api/ha-calendars":
+            if not self.admin_ok(load_config()):
+                return self.send_json({"error": "PIN required"}, 401)
+            try:
+                found = agenda.ha_calendars()
+            except Exception as e:
+                return self.send_json({"available": True, "calendars": [], "error": f"Couldn't reach Home Assistant: {e}"})
+            self.send_json({"available": agenda.ha_available(), "calendars": found})
         elif path == "/api/config":
             config = load_config()
             if not self.admin_ok(config):
