@@ -34,6 +34,8 @@
     #status { color: var(--muted); }
     #status.err { color: #c0392b; }
     a { color: var(--accent); }
+    .hint { color: var(--muted); font-size: 14px; margin: 0 0 8px; }
+    .f-url { flex: 1 1 100%; }
   </style>
 </head>
 <body>
@@ -61,6 +63,18 @@
       <h2>Chores</h2>
       <div id="chores"></div>
       <button class="btn ghost" id="add-chore" type="button">+ Add chore</button>
+    </section>
+
+    <section>
+      <h2>Calendars</h2>
+      <p class="hint">
+        To show an iCloud calendar on the fridge: on your iPhone, open the <b>Calendar</b> app, tap
+        <b>Calendars</b>, then the <b>ⓘ</b> next to the calendar. Turn on <b>Public Calendar</b>, tap
+        <b>Share Link…</b> and <b>Copy</b>, then paste the link below.
+        Anyone with that link can see the calendar, so only share it with people you trust.
+      </p>
+      <div id="calendars"></div>
+      <button class="btn ghost" id="add-calendar" type="button">+ Add calendar</button>
     </section>
 
     <div class="bar">

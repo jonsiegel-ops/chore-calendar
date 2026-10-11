@@ -8,10 +8,13 @@ screen and hosted on a Raspberry Pi.
 - **Weekly stats** (`/stats`, the **📊 This week** button): how many chores each kid has done this week,
   out of how many so far, with a day-by-day bar chart. Use the arrows to look back at earlier weeks
   (history is kept for about 90 days). The screen returns to the chart after 3 minutes untouched.
+- **Calendar** (`/calendar`, the **📅 Calendar** button): the next two weeks from one or more
+  iCloud calendars (or any calendar with an iCal link), refreshed every 15 minutes.
+  See [Adding an iCloud calendar](#adding-an-icloud-calendar).
 - **Settings** (`/admin`, the **⚙️** button): add or remove kids and chores, choose which days each chore
   happens, set star values, and set an optional PIN. This page is easiest to use from your phone.
 - Chores reset every day on their own. Stars count from Monday to Sunday.
-- The server is plain Python 3 with no packages to install. It runs as a Home Assistant add-on or as a regular service on Raspberry Pi OS.
+- The server is plain Python 3 (the calendar uses two small packages, installed for you). It runs as a Home Assistant add-on or as a regular service on Raspberry Pi OS.
 
 ## Install on Home Assistant OS
 
@@ -65,6 +68,18 @@ restarts, updates and Home Assistant backups.
 The page refreshes itself every 20 seconds and reloads overnight, so you can leave it open.
 Changes made on a phone show up on the fridge automatically.
 
+### Adding an iCloud calendar
+
+1. On your iPhone, open the **Calendar** app and tap **Calendars**.
+2. Tap the **ⓘ** next to the calendar you want on the fridge.
+3. Turn on **Public Calendar**, tap **Share Link…**, then **Copy**.
+4. On the chart's settings page (`/admin`), under **Calendars**, tap **+ Add calendar**,
+   give it a name and color, paste the link and tap **Save**.
+
+Repeat for each calendar. Anyone who has a public calendar link can see that calendar,
+so don't post it anywhere. To stop sharing, turn **Public Calendar** off again.
+New events show up on the fridge within about 15 minutes.
+
 ### Updating
 
 When the app changes, Home Assistant shows an update under **Settings → Updates** (and on the app's page).
@@ -79,6 +94,7 @@ Click **Update**. Your kids, chores and stars are kept.
 | Install fails | Check **Settings → System → Logs**, choosing **Supervisor** in the log picker. |
 | The page doesn't load on the fridge | Type `http://` in full, and make sure the fridge is on the same Wi-Fi network as the Pi, not a guest network. |
 | Port 8080 is already in use | Change the port on the app's **Configuration** tab under **Network**, then use the new port in the address. |
+| The calendar says "Couldn't update" | Check the link in Settings, and check that **Public Calendar** is still on for that calendar. The app's **Log** tab shows the exact error. The fridge keeps showing the last copy it got. |
 | Chores reset at the wrong time | Set your time zone in **Settings → System → General**, then restart the app. |
 
 ## Install on Raspberry Pi OS (no Home Assistant)
@@ -95,5 +111,6 @@ using the address the script prints.
 ## Running locally
 
 ```bash
+pip install -r chore-chart/requirements.txt  # for the calendar view
 python3 chore-chart/server.py --port 8080   # data goes in chore-chart/data/
 ```

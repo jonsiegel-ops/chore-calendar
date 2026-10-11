@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>Calendar</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <a class="nav-btn back" href="/">← Chart</a>
+    <h1>Calendar</h1>
+    <div class="when">
+      <div id="day" class="day"></div>
+      <div id="clock" class="clock"></div>
+    </div>
+  </header>
+
+  <div id="legend" class="legend"></div>
+  <main id="agenda" class="agenda"></main>
+
+  <div id="offline" class="offline" hidden>Can't reach the chore server — retrying…</div>
+
+  <script src="calendar.js"></script>
+</body>
+</html>

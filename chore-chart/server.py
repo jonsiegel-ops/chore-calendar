@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Chore chart server.
 
-Serves the fridge display (static/) and a small JSON API. Uses only the
-Python standard library so it runs on a stock Raspberry Pi OS install.
+Serves the fridge display (static/) and a small JSON API. Everything but the
+calendar view (ical_feed.py, see requirements.txt) uses only the standard library.
 
-Data lives in data/config.json (kids + chores) and data/state.json (what has
-been checked off, keyed by date).
+Data lives in data/config.json (kids, chores, calendars) and data/state.json
+(what has been checked off, keyed by date).
 """
 import argparse
 import datetime
@@ -17,12 +17,15 @@ import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
+import ical_feed
+
 ROOT = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(ROOT, "static")
 DATA_DIR = os.environ.get("CHORE_DATA_DIR", os.path.join(ROOT, "data"))
 CONFIG_PATH = os.path.join(DATA_DIR, "config.json")
 STATE_PATH = os.path.join(DATA_DIR, "state.json")
 EXAMPLE_CONFIG = os.path.join(ROOT, "config.example.json")
+CALENDAR_CACHE_DIR = os.path.join(DATA_DIR, "calendar-cache")
 
 KEEP_DAYS = 90  # how much check-off history to keep
 WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -221,11 +224,23 @@ def clean_config(raw):
             "days": days,
         })
 
+    calendars, cal_ids = [], set()
+    for c in raw.get("calendars", []):
+        name = str(c.get("name", "")).strip() or "Calendar"
+        url = ical_feed.normalize_url(str(c.get("url", "")))
+        if not re.match(r"https?://", url, re.I):
+            raise ValueError(f"The link for calendar “{name}” should start with webcal:// or https://")
+        color = str(c.get("color", "#4f7cff"))
+        if not re.fullmatch(r"#[0-9a-fA-F]{6}", color):
+            color = "#4f7cff"
+        calendars.append({"id": pick_id(c.get("id"), name, cal_ids), "name": name[:40], "color": color, "url": url[:2000]})
+
     return {
         "title": str(raw.get("title", "Chore Chart")).strip()[:60] or "Chore Chart",
         "admin_pin": str(raw.get("admin_pin", "")).strip()[:20],
         "kids": kids,
         "chores": chores,
+        "calendars": calendars,
     }
 
 
@@ -275,6 +290,11 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json({"error": "Bad week date"}, 400)
             with lock:
                 self.send_json(build_stats(load_config(), load_state(), day, today))
+        elif path == "/api/calendar":
+            # Fetching feeds can be slow, so don't hold the chore-data lock while doing it.
+            with lock:
+                calendars = load_config().get("calendars", [])
+            self.send_json(ical_feed.agenda(calendars, CALENDAR_CACHE_DIR))
         elif path == "/api/config":
             config = load_config()
             if not self.admin_ok(config):
@@ -285,6 +305,9 @@ class Handler(SimpleHTTPRequestHandler):
             super().do_GET()
         elif path == "/stats":
             self.path = "/stats.html"
+            super().do_GET()
+        elif path == "/calendar":
+            self.path = "/calendar.html"
             super().do_GET()
         else:
             super().do_GET()

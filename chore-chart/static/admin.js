@@ -8,6 +8,7 @@
 
   var $kids = document.getElementById("kids");
   var $chores = document.getElementById("chores");
+  var $calendars = document.getElementById("calendars");
   var $title = document.getElementById("title");
   var $pin = document.getElementById("pin");
   var $status = document.getElementById("status");
@@ -135,11 +136,30 @@
     });
   }
 
+  function renderCalendars() {
+    $calendars.innerHTML = "";
+    config.calendars.forEach(function (cal, idx) {
+      var row = el("div", "row");
+      row.appendChild(field("f-name", "Name", textInput(cal.name || "", function (v) { cal.name = v; })));
+      row.appendChild(field("", "Color", textInput(cal.color || "#4f7cff", function (v) { cal.color = v; }, "color")));
+      var del = el("button", "btn danger", "Remove");
+      del.type = "button";
+      del.addEventListener("click", function () { config.calendars.splice(idx, 1); renderCalendars(); });
+      row.appendChild(del);
+      var url = textInput(cal.url || "", function (v) { cal.url = v.trim(); });
+      url.placeholder = "webcal://p…-caldav.icloud.com/published/2/…";
+      url.autocomplete = "off";
+      row.appendChild(field("f-url", "Calendar link", url));
+      $calendars.appendChild(row);
+    });
+  }
+
   function renderAll() {
     $title.value = config.title || "";
     $pin.value = config.admin_pin || "";
     renderKids();
     renderChores();
+    renderCalendars();
   }
 
   // ---------- actions ----------
@@ -161,10 +181,16 @@
     renderChores();
   });
 
+  document.getElementById("add-calendar").addEventListener("click", function () {
+    config.calendars.push({ name: "", url: "", color: PALETTE[(config.calendars.length + 2) % PALETTE.length] });
+    renderCalendars();
+  });
+
   document.getElementById("save").addEventListener("click", function () {
     status("Saving…");
     request("PUT", config).then(function (saved) {
       config = saved;
+      config.calendars = config.calendars || [];
       pin = saved.admin_pin || "";
       sessionStorageSet("chorePin", pin);
       renderAll();
@@ -174,6 +200,7 @@
 
   request("GET").then(function (data) {
     config = data;
+    config.calendars = config.calendars || [];
     renderAll();
   }, function (e) { status(e.message, true); });
 })();
