@@ -18,6 +18,8 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 import agenda
+import display
+import ha
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(ROOT, "static")
@@ -26,6 +28,7 @@ CONFIG_PATH = os.path.join(DATA_DIR, "config.json")
 STATE_PATH = os.path.join(DATA_DIR, "state.json")
 EXAMPLE_CONFIG = os.path.join(ROOT, "config.example.json")
 CALENDAR_CACHE_DIR = os.path.join(DATA_DIR, "calendar-cache")
+PHOTO_DIR = os.path.join(DATA_DIR, "photos")
 
 KEEP_DAYS = 90  # how much check-off history to keep
 WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -243,12 +246,19 @@ def clean_config(raw):
             cal.update(source="ical", url=url[:2000])
         calendars.append(cal)
 
+    weather_entity = str(raw.get("weather_entity", "") or "").strip()
+    if weather_entity and not re.fullmatch(r"weather\.[a-z0-9_]+", weather_entity):
+        weather_entity = ""
+
     return {
         "title": str(raw.get("title", "Chore Chart")).strip()[:60] or "Chore Chart",
         "admin_pin": str(raw.get("admin_pin", "")).strip()[:20],
         "kids": kids,
         "chores": chores,
         "calendars": calendars,
+        "weather_entity": weather_entity,
+        "countdowns": display.clean_countdowns(raw.get("countdowns", []), pick_id),
+        "display": display.clean_display(raw.get("display")),
     }
 
 
@@ -260,7 +270,10 @@ class Handler(SimpleHTTPRequestHandler):
 
     def end_headers(self):
         # The fridge browser should always pick up new versions of the page.
-        self.send_header("Cache-Control", "no-store")
+        if getattr(self, "photo_cacheable", False):
+            self.send_header("Cache-Control", "max-age=31536000, immutable")
+        else:
+            self.send_header("Cache-Control", "no-store")
         super().end_headers()
 
     def log_message(self, fmt, *args):
@@ -280,12 +293,28 @@ class Handler(SimpleHTTPRequestHandler):
             raise ValueError("Request too large")
         return json.loads(self.rfile.read(length) or b"{}")
 
+    def send_photo(self, name):
+        path = display.photo_path(PHOTO_DIR, name)
+        if not path:
+            return self.send_json({"error": "Not found"}, 404)
+        ext = os.path.splitext(name)[1].lower()
+        types = {".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".gif": "image/gif"}
+        with open(path, "rb") as f:
+            data = f.read()
+        self.send_response(200)
+        self.send_header("Content-Type", types.get(ext, "application/octet-stream"))
+        self.send_header("Content-Length", str(len(data)))
+        self.photo_cacheable = True  # names never change, so the fridge can keep them
+        self.end_headers()
+        self.wfile.write(data)
+
     def admin_ok(self, config):
         pin = config.get("admin_pin", "")
         return not pin or self.headers.get("X-Admin-Pin", "") == pin
 
     def do_GET(self):
         path = urlparse(self.path).path
+        self.photo_cacheable = False
         if path == "/api/board":
             with lock:
                 self.send_json(build_board(load_config(), load_state(), datetime.date.today()))
@@ -314,11 +343,35 @@ class Handler(SimpleHTTPRequestHandler):
                 found = agenda.ha_calendars()
             except Exception as e:
                 return self.send_json({"available": True, "calendars": [], "error": f"Couldn't reach Home Assistant: {e}"})
-            self.send_json({"available": agenda.ha_available(), "calendars": found})
+            self.send_json({"available": ha.available(), "calendars": found})
+        elif path == "/api/display":
+            config = load_config()
+            self.send_json({
+                "display": display.clean_display(config.get("display")),
+                "countdowns": display.upcoming_countdowns(config.get("countdowns", []), datetime.date.today()),
+                "photos": display.list_photos(PHOTO_DIR),
+                "weather": bool(config.get("weather_entity")) and ha.available(),
+            })
+        elif path == "/api/weather":
+            self.send_json({"weather": display.weather(load_config().get("weather_entity"))})
+        elif path.startswith("/photos/"):
+            self.send_photo(path[len("/photos/"):])
+        elif path == "/api/ha-weather":
+            if not self.admin_ok(load_config()):
+                return self.send_json({"error": "PIN required"}, 401)
+            try:
+                found = ha.entities("weather")
+            except Exception as e:
+                return self.send_json({"available": True, "entities": [], "error": f"Couldn't reach Home Assistant: {e}"})
+            self.send_json({"available": ha.available(), "entities": found})
         elif path == "/api/config":
             config = load_config()
             if not self.admin_ok(config):
                 return self.send_json({"error": "PIN required"}, 401)
+            # Fill in settings added in later versions so the settings page can show them.
+            config["display"] = display.clean_display(config.get("display"))
+            config.setdefault("countdowns", [])
+            config.setdefault("weather_entity", "")
             self.send_json(config)
         elif path in ("/admin", "/settings"):
             self.path = "/admin.html"
@@ -338,10 +391,27 @@ class Handler(SimpleHTTPRequestHandler):
             if path == "/api/toggle":
                 body = self.read_json()
                 self.send_json(toggle(str(body.get("kid")), str(body.get("chore"))))
+            elif path == "/api/photos":
+                if not self.admin_ok(load_config()):
+                    return self.send_json({"error": "PIN required"}, 401)
+                length = int(self.headers.get("Content-Length") or 0)
+                if length > display.MAX_PHOTO_BYTES:
+                    raise ValueError("That photo is too large")
+                name = display.save_photo(PHOTO_DIR, self.rfile.read(length))
+                self.send_json({"name": name, "photos": display.list_photos(PHOTO_DIR)})
             else:
                 self.send_json({"error": "Not found"}, 404)
         except ValueError as e:
             self.send_json({"error": str(e)}, 400)
+
+    def do_DELETE(self):
+        path = urlparse(self.path).path
+        if not path.startswith("/api/photos/"):
+            return self.send_json({"error": "Not found"}, 404)
+        if not self.admin_ok(load_config()):
+            return self.send_json({"error": "PIN required"}, 401)
+        display.delete_photo(PHOTO_DIR, path[len("/api/photos/"):])
+        self.send_json({"photos": display.list_photos(PHOTO_DIR)})
 
     def do_PUT(self):
         path = urlparse(self.path).path

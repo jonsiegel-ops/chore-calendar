@@ -10,6 +10,9 @@
   var $kids = document.getElementById("kids");
   var $chores = document.getElementById("chores");
   var $calendars = document.getElementById("calendars");
+  var $countdowns = document.getElementById("countdowns");
+  var $photos = document.getElementById("photos");
+  var $photoStatus = document.getElementById("photo-status");
   var $title = document.getElementById("title");
   var $pin = document.getElementById("pin");
   var $status = document.getElementById("status");
@@ -45,10 +48,11 @@
   }
 
   function request(method, body, path) {
+    var isBlob = typeof Blob !== "undefined" && body instanceof Blob;
     return fetch(path || "/api/config", {
       method: method,
-      headers: { "Content-Type": "application/json", "X-Admin-Pin": pin },
-      body: body ? JSON.stringify(body) : undefined,
+      headers: { "Content-Type": isBlob ? body.type : "application/json", "X-Admin-Pin": pin },
+      body: isBlob ? body : body ? JSON.stringify(body) : undefined,
       cache: "no-store"
     }).then(function (res) {
       if (res.status === 401) {
@@ -180,12 +184,153 @@
     });
   }
 
+  // ---------- countdowns ----------
+
+  function renderCountdowns() {
+    $countdowns.innerHTML = "";
+    config.countdowns.forEach(function (c, idx) {
+      var row = el("div", "row");
+      row.appendChild(field("f-emoji", "Emoji", textInput(c.emoji || "", function (v) { c.emoji = v; })));
+      row.appendChild(field("f-name", "What", textInput(c.title || "", function (v) { c.title = v; })));
+      row.appendChild(field("f-time", "Date", textInput(c.date || "", function (v) { c.date = v; }, "date")));
+      var yearly = el("label", "check");
+      var box = document.createElement("input");
+      box.type = "checkbox";
+      box.checked = !!c.yearly;
+      box.addEventListener("change", function () { c.yearly = box.checked; });
+      yearly.appendChild(box);
+      yearly.appendChild(document.createTextNode(" Every year"));
+      row.appendChild(yearly);
+      var del = el("button", "btn danger", "Remove");
+      del.type = "button";
+      del.addEventListener("click", function () { config.countdowns.splice(idx, 1); renderCountdowns(); });
+      row.appendChild(del);
+      $countdowns.appendChild(row);
+    });
+  }
+
+  // ---------- weather ----------
+
+  function loadWeatherEntities() {
+    var $select = document.getElementById("weather-entity");
+    return request("GET", null, "/api/ha-weather").then(function (data) {
+      document.getElementById("weather-section").hidden = !data.available;
+      $select.innerHTML = "";
+      var options = [{ entity_id: "", name: "No weather" }].concat(data.entities);
+      if (config.weather_entity && !data.entities.some(function (w) { return w.entity_id === config.weather_entity; })) {
+        options.push({ entity_id: config.weather_entity, name: config.weather_entity + " (not found)" });
+      }
+      options.forEach(function (w) {
+        var opt = el("option", null, w.name);
+        opt.value = w.entity_id;
+        opt.selected = w.entity_id === config.weather_entity;
+        $select.appendChild(opt);
+      });
+      $select.onchange = function () { config.weather_entity = $select.value; };
+    }, function () { /* weather is optional */ });
+  }
+
+  // ---------- fridge display ----------
+
+  function bindDisplay() {
+    var d = config.display;
+    function bindCheck(id, key) {
+      var box = document.getElementById(id);
+      box.checked = !!d[key];
+      box.onchange = function () { d[key] = box.checked; };
+    }
+    function bindValue(id, key, number) {
+      var input = document.getElementById(id);
+      input.value = d[key];
+      input.oninput = function () { d[key] = number ? parseInt(input.value, 10) || 0 : input.value; };
+    }
+    bindCheck("night-mode", "night_mode");
+    bindValue("night-start", "night_start");
+    bindValue("night-end", "night_end");
+    bindCheck("fullscreen", "fullscreen");
+    bindCheck("screensaver", "screensaver");
+    bindValue("saver-minutes", "screensaver_minutes", true);
+    bindValue("photo-seconds", "photo_seconds", true);
+  }
+
+  function renderPhotos(names) {
+    $photos.innerHTML = "";
+    names.forEach(function (name) {
+      var tile = el("div", "photo");
+      var img = document.createElement("img");
+      img.src = "/photos/" + encodeURIComponent(name);
+      tile.appendChild(img);
+      var del = el("button", null, "×");
+      del.type = "button";
+      del.setAttribute("aria-label", "Delete photo");
+      del.addEventListener("click", function () {
+        if (!confirm("Delete this photo?")) return;
+        request("DELETE", null, "/api/photos/" + encodeURIComponent(name)).then(function (data) {
+          renderPhotos(data.photos);
+        }, function (e) { $photoStatus.textContent = e.message; });
+      });
+      tile.appendChild(del);
+      $photos.appendChild(tile);
+    });
+  }
+
+  function loadPhotos() {
+    return fetch("/api/display", { cache: "no-store" }).then(function (res) { return res.json(); })
+      .then(function (data) { renderPhotos(data.photos); }, function () { /* leave empty */ });
+  }
+
+  // Shrink photos on the phone before uploading: faster to send and to show on the fridge.
+  // (iPhones also hand the browser a JPEG here, so HEIC photos work too.)
+  function shrink(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        var scale = Math.min(1, 1920 / Math.max(img.naturalWidth, img.naturalHeight));
+        var canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.naturalWidth * scale);
+        canvas.height = Math.round(img.naturalHeight * scale);
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        canvas.toBlob(function (blob) {
+          if (blob) resolve(blob); else reject(new Error("Couldn't process " + file.name));
+        }, "image/jpeg", 0.85);
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        reject(new Error("Couldn't open " + file.name + " (try a JPEG or PNG)"));
+      };
+      img.src = url;
+    });
+  }
+
+  document.getElementById("photo-input").addEventListener("change", function (e) {
+    var files = Array.prototype.slice.call(e.target.files);
+    e.target.value = "";
+    var done = 0, failed = [];
+    function next() {
+      if (!files.length) {
+        $photoStatus.textContent = "Added " + done + " photo" + (done === 1 ? "" : "s") + "." +
+          (failed.length ? " Couldn't add: " + failed.join("; ") : "");
+        return loadPhotos();
+      }
+      var file = files.shift();
+      $photoStatus.textContent = "Uploading " + (done + failed.length + 1) + "…";
+      return shrink(file).then(function (blob) {
+        return request("POST", blob, "/api/photos");
+      }).then(function () { done++; }, function (err) { failed.push(err.message); }).then(next);
+    }
+    next();
+  });
+
   function renderAll() {
     $title.value = config.title || "";
     $pin.value = config.admin_pin || "";
     renderKids();
     renderChores();
     renderCalendars();
+    renderCountdowns();
+    bindDisplay();
   }
 
   // ---------- actions ----------
@@ -231,22 +376,31 @@
     }, function () { /* calendar links still work */ });
   }
 
+  document.getElementById("add-countdown").addEventListener("click", function () {
+    config.countdowns.push({ title: "", emoji: "🎉", date: "", yearly: false });
+    renderCountdowns();
+  });
+
   document.getElementById("save").addEventListener("click", function () {
     status("Saving…");
     request("PUT", config).then(function (saved) {
       config = saved;
       config.calendars = config.calendars || [];
+      config.countdowns = config.countdowns || [];
       pin = saved.admin_pin || "";
       sessionStorageSet("chorePin", pin);
       renderAll();
-      status("Saved ✓ The fridge will update within 20 seconds.");
+      status("Saved ✓ The fridge updates within a couple of minutes.");
     }, function (e) { status(e.message, true); });
   });
 
   request("GET").then(function (data) {
     config = data;
     config.calendars = config.calendars || [];
+    config.countdowns = config.countdowns || [];
     renderAll();
     loadHaCalendars();
+    loadWeatherEntities();
+    loadPhotos();
   }, function (e) { status(e.message, true); });
 })();

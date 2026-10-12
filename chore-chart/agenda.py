@@ -9,12 +9,13 @@
 """
 import datetime
 import hashlib
-import json
 import os
 import threading
 import time
 import urllib.parse
 import urllib.request
+
+import ha
 
 try:
     import icalendar
@@ -27,10 +28,6 @@ RETRY_SECONDS = 2 * 60
 FETCH_TIMEOUT = 20
 MAX_FEED_BYTES = 5 * 1024 * 1024
 WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-
-# Inside a Home Assistant add-on, the Supervisor provides this token and API proxy.
-HA_TOKEN = os.environ.get("SUPERVISOR_TOKEN", "")
-HA_API = os.environ.get("HA_API_URL", "http://supervisor/core/api")
 
 _cache = {}  # calendar id -> {"url", "text", "next_fetch", "error"}
 _ha_last = {}  # calendar id -> (entity_id, events) from the last successful read
@@ -125,22 +122,11 @@ def _ical_events(cal, cache_dir, first, last, warnings):
 
 # ---------------------------------------------------------------- Home Assistant
 
-def ha_available():
-    return bool(HA_TOKEN)
-
-
-def _ha_get(path, params=None):
-    url = HA_API + path + ("?" + urllib.parse.urlencode(params) if params else "")
-    req = urllib.request.Request(url, headers={"Authorization": "Bearer " + HA_TOKEN})
-    with urllib.request.urlopen(req, timeout=FETCH_TIMEOUT) as res:
-        return json.load(res)
-
-
 def ha_calendars():
     """Calendar entities in Home Assistant, for the settings page."""
-    if not ha_available():
+    if not ha.available():
         return []
-    return [{"entity_id": c["entity_id"], "name": c.get("name") or c["entity_id"]} for c in _ha_get("/calendars")]
+    return [{"entity_id": c["entity_id"], "name": c.get("name") or c["entity_id"]} for c in ha.get("/calendars")]
 
 
 def _ha_time(value):
@@ -153,12 +139,12 @@ def _ha_time(value):
 
 
 def _ha_events(cal, first, last, warnings):
-    if not ha_available():
+    if not ha.available():
         raise SourceError(f"“{cal['name']}” is a Home Assistant calendar, which only works when running as a Home Assistant app.")
     start = datetime.datetime.combine(first, datetime.time()).astimezone()
     end = datetime.datetime.combine(last + datetime.timedelta(days=1), datetime.time()).astimezone()
     try:
-        found = _ha_get("/calendars/" + urllib.parse.quote(cal["entity_id"]),
+        found = ha.get("/calendars/" + urllib.parse.quote(cal["entity_id"]),
                         {"start": start.isoformat(), "end": end.isoformat()})
     except Exception as e:
         # Home Assistant restarts during updates; keep showing what we had.

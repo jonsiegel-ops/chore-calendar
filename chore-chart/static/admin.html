@@ -26,7 +26,7 @@
     .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
     .chip.kid.on { background: var(--c); border-color: var(--c); }
     .group-label { flex-basis: 100%; font-size: 13px; color: var(--muted); margin-bottom: -4px; }
-    button.btn { border: 0; border-radius: 10px; padding: 10px 16px; font: inherit; font-weight: 600; cursor: pointer; }
+    button.btn, label.btn { border: 0; border-radius: 10px; padding: 10px 16px; font: inherit; font-weight: 600; cursor: pointer; }
     .primary { background: var(--accent); color: #fff; }
     .ghost { background: var(--line); color: var(--ink); }
     .danger { background: transparent; color: #c0392b; padding: 10px; }
@@ -35,6 +35,17 @@
     #status.err { color: #c0392b; }
     a { color: var(--accent); }
     .hint { color: var(--muted); font-size: 14px; margin: 0 0 8px; }
+    .hint.full { flex-basis: 100%; margin: 0; }
+    h3 { font-size: 16px; margin: 16px 0 8px; }
+    .check { display: flex; align-items: center; gap: 8px; flex: 1 1 220px; font-size: 16px; color: var(--ink); margin: 0; padding: 10px 0; }
+    .check input { width: 22px; height: 22px; }
+    .f-time { width: 150px; }
+    input[type=time] { width: 100%; padding: 10px; border: 2px solid var(--line); border-radius: 10px; font: inherit; background: #fff; color: var(--ink); }
+    .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin-bottom: 12px; }
+    .photo { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: var(--line); }
+    .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .photo button { position: absolute; top: 4px; right: 4px; width: 30px; height: 30px; border: 0; border-radius: 50%; background: rgba(0,0,0,.6); color: #fff; font-size: 16px; cursor: pointer; }
+    .upload { display: inline-block; }
     .f-url { flex: 1 1 100%; }
     select { width: 100%; padding: 10px; border: 2px solid var(--line); border-radius: 10px; font: inherit; background: #fff; color: var(--ink); }
   </style>
@@ -83,6 +94,41 @@
       <button class="btn ghost" id="add-ha-calendar" type="button" hidden>+ Home Assistant calendar</button>
       <button class="btn ghost" id="add-calendar" type="button">+ Calendar link</button>
       <p class="hint" id="ha-status"></p>
+    </section>
+
+    <section>
+      <h2>Countdowns</h2>
+      <p class="hint">Shown on the fridge until the day arrives. Turn on <b>Every year</b> for birthdays and holidays.</p>
+      <div id="countdowns"></div>
+      <button class="btn ghost" id="add-countdown" type="button">+ Add countdown</button>
+    </section>
+
+    <section id="weather-section" hidden>
+      <h2>Weather</h2>
+      <p class="hint">Shows the current temperature and today's high and low, from a Home Assistant weather entity.</p>
+      <select id="weather-entity"></select>
+    </section>
+
+    <section>
+      <h2>Fridge display</h2>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="night-mode"> Night mode (dark colors)</label>
+        <div class="f-time"><label for="night-start">From</label><input type="time" id="night-start"></div>
+        <div class="f-time"><label for="night-end">Until</label><input type="time" id="night-end"></div>
+      </div>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="fullscreen"> Full screen on the fridge</label>
+        <p class="hint full">Hides the browser's address bar and toolbar after the first tap on each page.</p>
+      </div>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="screensaver"> Photo screensaver</label>
+        <div class="f-time"><label for="saver-minutes">After (minutes idle)</label><input type="number" id="saver-minutes" min="1" max="120"></div>
+        <div class="f-time"><label for="photo-seconds">Seconds per photo</label><input type="number" id="photo-seconds" min="5" max="600"></div>
+      </div>
+      <h3>Screensaver photos</h3>
+      <div id="photos" class="photo-grid"></div>
+      <label class="btn ghost upload">+ Add photos<input type="file" id="photo-input" accept="image/*" multiple hidden></label>
+      <p class="hint" id="photo-status">Photos upload right away; no need to tap Save.</p>
     </section>
 
     <div class="bar">

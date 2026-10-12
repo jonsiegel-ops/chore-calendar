@@ -13,6 +13,14 @@ screen and hosted on a Raspberry Pi.
 - **Calendar** (`/calendar`, the **📅 Calendar** button): the next two weeks from one or more
   calendars. Use private iCloud calendars through Home Assistant, or any public calendar link.
   See [Adding a private iCloud calendar](#adding-a-private-icloud-calendar).
+- **Fridge extras** (all under **Fridge display**, **Countdowns** and **Weather** in Settings):
+  - **Weather:** the current temperature and today's high and low in the Today card, from a Home Assistant weather entity.
+  - **Countdowns:** chips like "🎂 Shai's birthday · 12 days". Mark birthdays and holidays **Every year**.
+  - **Night mode:** dark colors between the times you choose (8 pm to 6:30 am by default).
+  - **Photo screensaver:** after a few idle minutes, a slideshow of your photos with a big clock. Tap to go back.
+    Add photos from your phone on the Settings page; they're shrunk before uploading.
+  - **Full screen:** the first tap on each page hides the browser's address bar and toolbar
+    (if the browser allows it; moving to another page leaves full screen until the next tap).
 - **Settings** (`/admin`, the **⚙️** button): add or remove kids and chores, choose which days each chore
   happens, set star values, and set an optional PIN. This page is easiest to use from your phone.
 - Chores reset every day on their own. Stars count from Monday to Sunday.

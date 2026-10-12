@@ -6,7 +6,7 @@ RUN apk add --no-cache tzdata
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
-COPY server.py agenda.py config.example.json /app/
+COPY server.py agenda.py display.py ha.py config.example.json /app/
 COPY static /app/static
 
 # Home Assistant mounts the add-on's persistent storage at /data,

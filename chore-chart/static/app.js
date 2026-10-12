@@ -16,7 +16,17 @@
   var $confetti = document.getElementById("confetti");
   var $todayCal = document.getElementById("today-cal");
   var $todayEvents = document.getElementById("today-events");
-  var todayEvents = null;
+  var $weather = document.getElementById("weather");
+  var $countdowns = document.getElementById("countdowns");
+  var todayEvents = null;   // null until loaded; hidden when no calendar is set up
+  var calendarSetUp = false;
+  var weather = null;
+  var countdowns = [];
+  var WEATHER_ICONS = {
+    "clear-night": "🌙", "cloudy": "☁️", "exceptional": "⚠️", "fog": "🌫️", "hail": "🌨️",
+    "lightning": "🌩️", "lightning-rainy": "⛈️", "partlycloudy": "⛅", "pouring": "🌧️",
+    "rainy": "🌦️", "snowy": "❄️", "snowy-rainy": "🌨️", "sunny": "☀️", "windy": "💨", "windy-variant": "💨"
+  };
 
   function el(tag, cls, text) {
     var n = document.createElement(tag);
@@ -186,11 +196,51 @@
     });
   }
 
+  function showTodayCard() {
+    $todayEvents.hidden = !calendarSetUp;
+    $todayCal.hidden = !calendarSetUp && !weather && !countdowns.length;
+  }
+
   function loadToday() {
     return api("GET", "/api/calendar?days=1").then(function (data) {
-      $todayCal.hidden = !data.configured;
+      calendarSetUp = data.configured;
       todayEvents = data.days.length ? data.days[0].events : [];
       renderToday();
+      showTodayCard();
+    }, function () { /* keep showing what we had */ });
+  }
+
+  function round(t) { return t == null ? "" : Math.round(t) + "°"; }
+
+  function loadWeather() {
+    return api("GET", "/api/weather").then(function (data) {
+      weather = data.weather;
+      $weather.hidden = !weather;
+      if (weather) {
+        $weather.innerHTML = "";
+        $weather.appendChild(el("span", "weather-icon", WEATHER_ICONS[weather.condition] || "🌡️"));
+        $weather.appendChild(el("span", "weather-temp", round(weather.temperature)));
+        if (weather.high != null) {
+          $weather.appendChild(el("span", "weather-range", "↑" + round(weather.high) + " ↓" + round(weather.low)));
+        }
+      }
+      showTodayCard();
+    }, function () { /* keep showing what we had */ });
+  }
+
+  function loadCountdowns() {
+    return api("GET", "/api/display").then(function (data) {
+      countdowns = data.countdowns;
+      $countdowns.hidden = !countdowns.length;
+      $countdowns.innerHTML = "";
+      countdowns.forEach(function (c) {
+        var when = c.days === 0 ? "Today! 🎉" : c.days === 1 ? "Tomorrow!" : c.days + " days";
+        var chip = el("span", "countdown" + (c.days <= 1 ? " soon" : ""));
+        chip.appendChild(el("span", "countdown-title", (c.emoji ? c.emoji + " " : "") + c.title));
+        chip.appendChild(el("span", "countdown-days", when));
+        $countdowns.appendChild(chip);
+      });
+      showTodayCard();
     }, function () { /* keep showing what we had */ });
   }
 
@@ -201,7 +251,7 @@
 
     // New day: fetch the fresh board right away instead of waiting for the poll.
     var today = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-" + pad(now.getDate());
-    if (board && board.date !== today && now.getSeconds() % 10 === 0) { refresh(); loadToday(); }
+    if (board && board.date !== today && now.getSeconds() % 10 === 0) { refresh(); loadToday(); loadCountdowns(); }
     if (now.getSeconds() === 0) renderToday(); // fade events as they finish
 
     // A fridge never closes its tabs; reload overnight to stay fresh.
@@ -210,9 +260,13 @@
 
   refresh();
   loadToday();
+  loadWeather();
+  loadCountdowns();
   tick();
   setInterval(tick, 1000);
   setInterval(refresh, POLL_MS);
   setInterval(loadToday, CALENDAR_MS);
+  setInterval(loadWeather, CALENDAR_MS);
+  setInterval(loadCountdowns, 2 * 60 * 1000);
   document.addEventListener("visibilitychange", function () { if (!document.hidden) refresh(); });
 })();

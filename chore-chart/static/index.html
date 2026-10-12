@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="style.css">
   <script src="fit.js"></script>
 </head>
-<body>
+<body data-screensaver>
   <header class="top">
     <h1 id="title">Chore Chart</h1>
     <nav class="nav">
@@ -22,8 +22,12 @@
   </header>
 
   <a id="today-cal" class="today-cal" href="/calendar" hidden>
-    <div class="today-cal-title">📅 Today</div>
-    <div id="today-events" class="today-events"></div>
+    <div class="today-cal-head">
+      <div class="today-cal-title">📅 Today</div>
+      <div id="weather" class="weather" hidden></div>
+    </div>
+    <div id="today-events" class="today-events" hidden></div>
+    <div id="countdowns" class="countdowns" hidden></div>
   </a>
 
   <main id="board" class="board"></main>
@@ -31,6 +35,7 @@
   <div id="offline" class="offline" hidden>Can't reach the chore server — retrying…</div>
   <div id="confetti" class="confetti" aria-hidden="true"></div>
 
+  <script src="display.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
