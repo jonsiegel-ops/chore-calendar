@@ -46,6 +46,7 @@
     .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .photo button { position: absolute; top: 4px; right: 4px; width: 30px; height: 30px; border: 0; border-radius: 50%; background: rgba(0,0,0,.6); color: #fff; font-size: 16px; cursor: pointer; }
     .upload { display: inline-block; }
+    .weather-check { margin: 8px 0 0; font-size: 15px; }
     .f-url { flex: 1 1 100%; }
     select { width: 100%; padding: 10px; border: 2px solid var(--line); border-radius: 10px; font: inherit; background: #fff; color: var(--ink); }
   </style>
@@ -107,6 +108,7 @@
       <h2>Weather</h2>
       <p class="hint">Shows the current temperature and today's high and low, from a Home Assistant weather entity.</p>
       <select id="weather-entity"></select>
+      <p class="hint weather-check" id="weather-check"></p>
     </section>
 
     <section>

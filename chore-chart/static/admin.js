@@ -226,8 +226,27 @@
         opt.selected = w.entity_id === config.weather_entity;
         $select.appendChild(opt);
       });
-      $select.onchange = function () { config.weather_entity = $select.value; };
+      $select.onchange = function () {
+        config.weather_entity = $select.value;
+        document.getElementById("weather-check").textContent = "Tap Save to use this.";
+      };
+      checkWeather();
     }, function () { /* weather is optional */ });
+  }
+
+  // Show what the fridge will get, so problems are visible here instead of a blank spot.
+  function checkWeather() {
+    var $check = document.getElementById("weather-check");
+    return fetch("/api/weather", { cache: "no-store" }).then(function (res) { return res.json(); }).then(function (data) {
+      var w = data.weather;
+      if (w) {
+        var deg = function (t) { return t == null ? "?" : Math.round(t) + "°"; };
+        $check.textContent = "✓ Now: " + deg(w.temperature) + " " + (w.condition || "").replace("partlycloudy", "partly cloudy") +
+          (w.high != null ? " · high " + deg(w.high) + ", low " + deg(w.low) : "");
+      } else {
+        $check.textContent = config.weather_entity ? "⚠️ No weather yet: " + data.problem + "." : "";
+      }
+    }, function () { $check.textContent = ""; });
   }
 
   // ---------- fridge display ----------
@@ -391,6 +410,7 @@
       sessionStorageSet("chorePin", pin);
       renderAll();
       status("Saved ✓ The fridge updates within a couple of minutes.");
+      checkWeather();
     }, function (e) { status(e.message, true); });
   });
 

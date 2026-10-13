@@ -248,7 +248,7 @@ def clean_config(raw):
 
     weather_entity = str(raw.get("weather_entity", "") or "").strip()
     if weather_entity and not re.fullmatch(r"weather\.[a-z0-9_]+", weather_entity):
-        weather_entity = ""
+        raise ValueError(f"“{weather_entity}” isn't a Home Assistant weather entity")
 
     return {
         "title": str(raw.get("title", "Chore Chart")).strip()[:60] or "Chore Chart",
@@ -353,7 +353,8 @@ class Handler(SimpleHTTPRequestHandler):
                 "weather": bool(config.get("weather_entity")) and ha.available(),
             })
         elif path == "/api/weather":
-            self.send_json({"weather": display.weather(load_config().get("weather_entity"))})
+            result, problem = display.weather(load_config().get("weather_entity"))
+            self.send_json({"weather": result, "problem": problem})
         elif path.startswith("/photos/"):
             self.send_photo(path[len("/photos/"):])
         elif path == "/api/ha-weather":
@@ -421,7 +422,12 @@ class Handler(SimpleHTTPRequestHandler):
             with lock:
                 if not self.admin_ok(load_config()):
                     return self.send_json({"error": "PIN required"}, 401)
-                config = clean_config(self.read_json())
+                incoming = self.read_json()
+                if not isinstance(incoming, dict):
+                    raise ValueError("Config must be an object")
+                # A settings page opened before an update doesn't know about newer
+                # settings; keep those instead of wiping them.
+                config = clean_config(dict(load_config(), **incoming))
                 save_json(CONFIG_PATH, config)
             self.send_json(config)
         except (ValueError, TypeError) as e:

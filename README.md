@@ -135,6 +135,7 @@ Click **Update**. Your kids, chores and stars are kept.
 | Port 8080 is already in use | Change the port on the app's **Configuration** tab under **Network**, then use the new port in the address. |
 | The calendar says "Couldn't update" | For a Home Assistant calendar, check that the CalDAV integration is working under **Settings → Devices & services**. For a link, check that **Public Calendar** is still on. The app's **Log** tab shows the exact error. The fridge keeps showing the last copy it got. |
 | **+ Home Assistant calendar** is missing in Settings | It only appears when the chart runs as a Home Assistant app. Update the app to 1.3.0 or later and restart it. |
+| No weather on the fridge | In Settings, pick the weather entity and tap **Save**. The line under the picker shows what the fridge will get, or why there's nothing. |
 | Chores reset at the wrong time | Set your time zone in **Settings → System → General**, then restart the app. |
 
 ## Install on Raspberry Pi OS (no Home Assistant)

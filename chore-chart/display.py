@@ -137,23 +137,47 @@ def delete_photo(photo_dir, name):
 
 # ---------------------------------------------------------------- weather
 
+_last_weather_problem = None
+
+
+def _weather_problem(message):
+    """Log a weather problem once (not every few minutes) and return it for the settings page."""
+    global _last_weather_problem
+    if message != _last_weather_problem:
+        print("Weather: " + message, flush=True)
+        _last_weather_problem = message
+    return None, message
+
+
 def weather(entity_id):
-    """Current conditions and today's forecast from a Home Assistant weather entity."""
-    if not entity_id or not ha.available():
-        return None
+    """Current conditions and today's forecast from a Home Assistant weather entity.
+
+    Returns (weather, problem): weather is None when there's nothing to show,
+    and problem says why in words a parent can act on.
+    """
+    if not entity_id:
+        return _weather_problem("no weather entity is selected in Settings")
+    if not ha.available():
+        return _weather_problem("weather needs the chart to run as a Home Assistant app")
     now = time.time()
     with _weather_lock:
         cached = _weather_cache.get(entity_id)
     if cached and now - cached[0] < WEATHER_REFRESH_SECONDS:
-        return cached[1]
+        return cached[1], None
 
     try:
         state = ha.get("/states/" + entity_id)
     except Exception as e:
-        print(f"Weather: couldn't read {entity_id} from Home Assistant: {e}", flush=True)
-        return cached[1] if cached else None  # keep showing the last reading
+        if cached:  # keep showing the last reading
+            _weather_problem(f"couldn't read {entity_id} from Home Assistant ({e}); showing the last reading")
+            return cached[1], None
+        return _weather_problem(f"couldn't read {entity_id} from Home Assistant ({e})")
 
     attrs = state.get("attributes", {})
+    if state.get("state") in ("unavailable", "unknown") or attrs.get("temperature") is None:
+        return _weather_problem(f"Home Assistant reports {entity_id} as {state.get('state')}; "
+                                "check its integration under Settings → Devices & services")
+
     result = {
         "condition": state.get("state"),
         "temperature": attrs.get("temperature"),
@@ -169,8 +193,8 @@ def weather(entity_id):
             result["high"] = forecast[0].get("temperature")
             result["low"] = forecast[0].get("templow")
     except Exception as e:
-        print(f"Weather: no daily forecast for {entity_id}: {e}", flush=True)
+        _weather_problem(f"no daily forecast for {entity_id} ({e}); showing the temperature only")
 
     with _weather_lock:
         _weather_cache[entity_id] = (now, result)
-    return result
+    return result, None
