@@ -140,15 +140,13 @@ Click **Update**. Your kids, chores and stars are kept.
 
 ## Network Dashboard (second Home Assistant app)
 
-This repository also contains **Network Dashboard** (`network-dashboard/`): a live view of your home
-network that runs on the same Pi. It shows internet and router latency, every device found on your
-LAN (with friendly names and "new device" flags), custom ping/TCP/HTTP monitors, live throughput, and the Pi's
-CPU, memory, disk and temperature. Install it like the chore chart (Settings → Apps → **Network Dashboard**),
-then open `http://<pi-ip>:8081`. See `network-dashboard/DOCS.md`.
+This repository also contains **Network Dashboard** (`network-dashboard/`): a live view of your UniFi network
+built entirely from your controller's data: WAN status, throughput and latency, gateway health, UniFi devices,
+and every client with its Wi-Fi/wired connection and traffic. Install it like the chore chart
+(Settings → Apps → **Network Dashboard**), add your controller on its Configuration tab, then open `http://<pi-ip>:8081`.
+See `network-dashboard/DOCS.md`.
 
-It can also read your **UniFi** controller (devices, Wi-Fi/wired connection, WAN health): see the UniFi section of `network-dashboard/DOCS.md`.
-
-Run locally: `python3 network-dashboard/server.py --port 8081`
+Run locally: `UNIFI_URL=https://192.168.1.1 UNIFI_USERNAME=... UNIFI_PASSWORD=... python3 network-dashboard/server.py --port 8081`
 
 ## Install on Raspberry Pi OS (no Home Assistant)
 

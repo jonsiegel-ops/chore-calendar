@@ -1,118 +1,96 @@
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const fmtB = n => { for (const u of ["B","KB","MB","GB","TB"]) { if (n < 1024 || u == "TB") return n.toFixed(n < 10 && u != "B" ? 1 : 0) + " " + u; n /= 1024; } };
-const fmtRate = n => (n * 8 / 1e6).toFixed(n * 8 < 1e7 ? 2 : 1) + " Mbps";
-const ago = t => { const s = Date.now() / 1000 - t; return s < 60 ? "just now" : s < 3600 ? Math.floor(s / 60) + " min ago" : s < 86400 ? Math.floor(s / 3600) + " h ago" : Math.floor(s / 86400) + " d ago"; };
-const dur = s => { const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60); return (d ? d + "d " : "") + h + "h " + m + "m"; };
-const api = (p, b) => fetch(p, { method: "POST", body: JSON.stringify(b || {}) }).then(r => r.json());
+const fmtB = n => { n = n || 0; for (const u of ["B","KB","MB","GB","TB"]) { if (n < 1024 || u == "TB") return n.toFixed(n < 10 && u != "B" ? 1 : 0) + " " + u; n /= 1024; } };
+const fmtRate = n => { const b = (n || 0) * 8; return b >= 1e9 ? (b / 1e9).toFixed(2) + " Gbps" : b >= 1e6 ? (b / 1e6).toFixed(b < 1e7 ? 2 : 1) + " Mbps" : (b / 1e3).toFixed(0) + " kbps"; };
+const ago = t => { if (!t) return "—"; const s = Date.now() / 1000 - t; return s < 90 ? "just now" : s < 3600 ? Math.floor(s / 60) + " min ago" : s < 86400 ? Math.floor(s / 3600) + " h ago" : Math.floor(s / 86400) + " d ago"; };
+const dur = s => { s = s || 0; const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60); return (d ? d + "d " : "") + h + "h " + m + "m"; };
+const bar = (pct, warn = 70, bad = 90) => `<div class="bar"><i class="${pct >= bad ? "bad" : pct >= warn ? "warn" : ""}" style="width:${Math.min(100, pct || 0)}%"></i></div>`;
+const plural = n => n + (n == 1 ? " client" : " clients");
+const kv = (l, v) => `<div class="kv"><span>${l}</span><span>${v}</span></div>`;
+let data = null;
 
-function spark(vals, key) {
+function spark(vals, cls = "") {
   const v = vals.map(x => x == null ? null : +x), nums = v.filter(x => x != null);
-  if (nums.length < 2) return '<svg class="spark"></svg>';
-  const max = Math.max(...nums, 1), W = 90, H = 24; let d = "", pen = false;
-  v.forEach((x, i) => { if (x == null) { pen = false; return; }
-    d += (pen ? "L" : "M") + (i / (v.length - 1) * W).toFixed(1) + " " + (H - 2 - x / max * (H - 4)).toFixed(1); pen = true; });
-  return `<svg class="spark" viewBox="0 0 ${W} ${H}"><path d="${d}"/></svg>`;
+  if (nums.length < 2) return `<svg class="spark ${cls}"></svg>`;
+  const max = Math.max(...nums, 1e-9), W = 300, H = 40; let d = "", pen = false;
+  v.forEach((x, i) => { if (x == null) { pen = false; return; } d += (pen ? "L" : "M") + (i / (v.length - 1) * W).toFixed(1) + " " + (H - 2 - x / max * (H - 4)).toFixed(1); pen = true; });
+  return `<svg class="spark ${cls}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><path vector-effect="non-scaling-stroke" d="${d}"/></svg>`;
 }
-const bar = (pct, warn = 70, bad = 90) => `<div class="bar"><i class="${pct >= bad ? "bad" : pct >= warn ? "warn" : ""}" style="width:${Math.min(100, pct)}%"></i></div>`;
-let data = null, editing = false;
 
 function render(s) {
   data = s;
-  const mons = Object.entries(s.monitors), devs = Object.entries(s.devices);
-  const online = Object.values(mergedDevices()).filter(d => d.online).length, fresh = devs.filter(([, d]) => d.new).length;
-  const inet = mons.filter(([k]) => k.startsWith("internet-")), inetUp = inet.some(([, m]) => m.up);
-  const gw = s.monitors.gateway;
+  const setup = $("setup"), has = s.enabled;
+  setup.hidden = has && s.ok;
+  if (!has) setup.innerHTML = `<h2>Connect your UniFi controller</h2><p>Open this app's <b>Configuration</b> tab in Home Assistant and set <b>unifi_url</b> (for example <code>https://192.168.1.1</code>), <b>unifi_username</b> and <b>unifi_password</b>, then restart the app. Use a local-only, View Only admin created in UniFi. Details are on the app's Documentation tab.</p>`;
+  else if (!s.ok) setup.innerHTML = `<h2>UniFi</h2><div class="${s.last ? "warn" : "muted"}">${esc(s.error)}</div>${s.last ? `<div class="muted">Showing data from ${ago(s.last)}.</div>` : ""}`;
+  if (!s.devices) { $("tiles").innerHTML = ""; return; }
+
+  const hl = s.health || {}, wan = hl.wan || {}, www = hl.www || {}, gw = s.devices.find(d => d.wan);
+  const online = s.clients_online || [], wifi = online.filter(c => !c.is_wired).length;
+  const devUp = s.devices.filter(d => d.up).length, updates = s.devices.filter(d => d.upgradable).length;
+  const rx = gw?.wan?.rx, tx = gw?.wan?.tx, st = gw?.speedtest || {};
+  const wanOk = wan.status ? wan.status == "ok" : gw?.wan?.up;
   $("tiles").innerHTML = [
-    ["Internet", inet.length ? (inetUp ? "Online" : "Down") : "—", inet.length ? (inetUp ? "ok" : "bad") : "", inet.filter(([, m]) => m.up).map(([, m]) => m.ms.toFixed(0) + " ms").join(" · ")],
-    ["Router", gw ? (gw.up ? gw.ms.toFixed(1) + " ms" : "Down") : "—", gw ? (gw.up ? "ok" : "bad") : "", s.gateway],
-    ["Devices online", online, "", Object.keys(mergedDevices()).length + " known" + (fresh ? ` · <span class="warn">${fresh} new</span>` : "")],
-    ["Down / Up", s.net.rx != null ? "↓ " + fmtRate(s.net.rx) : "—", "", s.net.tx != null ? "↑ " + fmtRate(s.net.tx) : ""],
-    ["Pi uptime", s.system.uptime ? dur(s.system.uptime) : "—", "", s.local_ip],
+    ["Internet", wan.status || gw ? (wanOk ? "Online" : "Down") : "—", wanOk ? "ok" : "bad", [www.latency != null && www.latency + " ms", wan.wan_ip || gw?.wan?.ip].filter(Boolean).join(" · ")],
+    ["WAN ↓ / ↑", rx != null ? fmtRate(rx) : "—", "", tx != null ? "↑ " + fmtRate(tx) : ""],
+    ["Clients", online.length, "", `${wifi} Wi-Fi · ${online.length - wifi} wired`],
+    ["UniFi devices", `${devUp} / ${s.devices.length}`, devUp < s.devices.length ? "warn" : "", updates ? `<span class="warn">${updates} update${updates > 1 ? "s" : ""}</span>` : "all up to date"],
+    ["Gateway", gw ? (gw.cpu != null ? gw.cpu + "% CPU" : gw.name) : "—", gw?.cpu > 85 ? "warn" : "", gw ? [gw.temp != null && gw.temp + " °C", gw.uptime && dur(gw.uptime)].filter(Boolean).join(" · ") : ""],
   ].map(([l, b, c, sub]) => `<div class="tile"><div class="lbl">${l}</div><div class="big ${c}">${b}</div><div class="muted">${sub || "&nbsp;"}</div></div>`).join("");
 
-  $("monitors").innerHTML = mons.map(([id, m]) => `<div class="mon"><span class="dot ${m.up ? "up" : ""}"></span>
-    <div>${esc(m.name)}<div class="muted">${esc(m.type)} ${esc(m.host)}${m.port ? ":" + m.port : ""}</div></div>
-    ${spark(m.hist)}<span class="${m.up ? "" : "bad"}">${m.up ? m.ms.toFixed(0) + " ms" : "down"}</span>
-    ${m.builtin ? "" : `<button class="ghost" data-del="${id}" title="Remove">✕</button>`}</div>`).join("") || '<div class="muted">Collecting…</div>';
+  const h = s.hist || {};
+  $("wan").innerHTML = `<div class="lg"><span>↓ Download</span><b>${rx != null ? fmtRate(rx) : "—"}</b></div>${spark(h.rx || [], "big")}
+    <div class="lg"><span>↑ Upload</span><b>${tx != null ? fmtRate(tx) : "—"}</b></div>${spark(h.tx || [], "big")}
+    <div class="lg"><span>Latency</span><b>${www.latency != null ? www.latency + " ms" : "—"}</b></div>${spark(h.lat || [], "big")}
+    <div class="muted">Last ${Math.round((h.rx || []).length * 10 / 60)} min, measured by the gateway${gw?.wan?.speed ? " · link " + gw.wan.speed + " Mbps" : ""}</div>
+    ${st.xput_download ? kv("Last speed test", `↓ ${(+st.xput_download).toFixed(0)} / ↑ ${(+st.xput_upload).toFixed(0)} Mbps · ${st.latency ?? "?"} ms`) + `<div class="muted">${st.rundate ? ago(st.rundate) : ""}</div>` : ""}
+    ${wan.isp_name ? kv("ISP", esc(wan.isp_name)) : ""}${www.drops != null ? kv("Internet drops", www.drops) : ""}`;
 
-  const nh = s.net_hist || [];
-  $("net").innerHTML = `<div class="kv"><span>↓ Download</span><b>${s.net.rx != null ? fmtRate(s.net.rx) : "—"}</b></div>${spark(nh.map(x => x[0]))}
-    <div class="kv"><span>↑ Upload</span><b>${s.net.tx != null ? fmtRate(s.net.tx) : "—"}</b></div>${spark(nh.map(x => x[1]))}
-    <div class="muted">Combined across the Pi's network interfaces</div>`;
+  $("gw").innerHTML = gw ? kv("Model", esc(gw.model) + " · " + esc(gw.version)) + kv("WAN IP", esc(gw.wan?.ip || wan.wan_ip || "—")) + kv("Uptime", dur(gw.uptime)) +
+    (gw.cpu != null ? kv("CPU", gw.cpu + "%") + bar(gw.cpu) : "") + (gw.mem != null ? kv("Memory", gw.mem + "%") + bar(gw.mem) : "") +
+    (gw.temp != null ? kv("Temperature", gw.temp + " °C") + bar(gw.temp, 70, 85) : "") +
+    (gw.ports ? `<div class="muted">Ports: ` + gw.ports.map(p => `<span class="pill ${p.up ? "" : "off"}" title="${esc(p.name)}">${p.port_idx}${p.up ? " · " + (p.speed >= 1000 ? p.speed / 1000 + "G" : p.speed + "M") : ""}</span>`).join("") + "</div>" : "")
+    : '<div class="muted">No gateway found.</div>';
 
-  const y = s.system, row = (l, v, pct, extra) => `<div class="kv"><span>${l}</span><span>${v}</span></div>${pct != null ? bar(pct, ...(extra || [])) : ""}`;
-  $("sys").innerHTML =
-    (y.cpu != null ? row("CPU", y.cpu + "%", y.cpu) : "") +
-    (y.mem_total ? row("Memory", fmtB(y.mem_used) + " / " + fmtB(y.mem_total), 100 * y.mem_used / y.mem_total) : "") +
-    (y.disk_total ? row("Disk", fmtB(y.disk_used) + " / " + fmtB(y.disk_total), 100 * y.disk_used / y.disk_total, [80, 92]) : "") +
-    (y.temp != null ? row("Temperature", y.temp + " °C", y.temp, [60, 75]) : "") +
-    (y.load ? `<div class="kv"><span>Load (1/5/15 min)</span><span>${y.load.map(x => x.toFixed(2)).join(" · ")}</span></div>` : "");
+  const top = [...online].sort((a, b) => (b.rx + b.tx) - (a.rx + a.tx)).slice(0, 6);
+  $("top").innerHTML = top.map(c => kv(esc(nameOf(c)), `↓ ${fmtRate(c.rx)} · ↑ ${fmtRate(c.tx)}`)).join("") || '<div class="muted">No clients.</div>';
 
-  const sc = s.scan;
-  $("scanInfo").textContent = sc.running ? "Scanning…" : sc.last ? `Last sweep ${ago(sc.last)} of ${sc.subnet} (${sc.duration}s)` : "First sweep starting…";
-  renderUnifi(s.unifi || {});
-  $("devCount").textContent = `(${online} online)`;
-  if (!editing) renderDevices();
+  $("devices").innerHTML = s.devices.map(d => `<tr class="${d.up ? "" : "off"}"><td><span class="dot ${d.up ? "up" : ""}"></span></td><td>${esc(d.name)}</td><td>${esc(d.model)}</td><td>${esc(d.ip)}</td>
+    <td>${d.num_sta ?? "—"}</td><td>${d.cpu != null ? d.cpu + "% / " + (d.mem ?? "?") + "%" : "—"}</td><td>${d.up ? dur(d.uptime) : "offline"}</td>
+    <td>${esc(d.version)}${d.upgradable ? ' <span class="badge">update</span>' : ""}</td></tr>`).join("");
+
+  const per = k => online.reduce((m, c) => (m[c[k]] = (m[c[k]] || 0) + 1, m), {});
+  const bySsid = per("essid"), byNet = per("network");
+  $("wlans").innerHTML = (s.wlans || []).map(w => kv(esc(w.name) + (w.is_guest ? '<span class="pill">guest</span>' : "") + (w.enabled === false ? '<span class="pill off">off</span>' : ""), plural(bySsid[w.name] || 0))).join("") || '<div class="muted">No data.</div>';
+  $("nets").innerHTML = (s.networks || []).map(n => kv(esc(n.name) + (n.vlan ? `<span class="pill">VLAN ${esc(n.vlan)}</span>` : ""), `${plural(byNet[n.name] || 0)}${n.ip_subnet ? " · " + esc(n.ip_subnet) : ""}`)).join("") || '<div class="muted">No data.</div>';
+  $("events").innerHTML = (s.events || []).slice(0, 12).map(e => `<div class="ev">${esc(String(e.msg || e.key).replace(/\{|\}/g, ""))}<div class="muted">${ago(e.time / 1000)}</div></div>`).join("") || '<div class="muted">No recent events.</div>';
+  $("updated").textContent = s.last ? "Updated " + ago(s.last) : "";
+  renderClients();
 }
 
-function renderUnifi(u) {
-  $("unifiCard").hidden = !u.enabled;
-  if (!u.enabled) return;
-  if (!u.ok) { $("unifiInfo").textContent = ""; $("unifi").innerHTML = `<div class="${u.last ? "warn" : "muted"}">${esc(u.error || "Connecting…")}</div>`; return; }
-  $("unifiInfo").textContent = "· updated " + ago(u.last);
-  const hl = u.health || {}, wan = hl.wan || {}, www = hl.www || {};
-  const stat = (l, v, c) => `<span class="chip ${c || ""}">${l}: <b>${v}</b></span>`;
-  const chips = [
-    wan.status && stat("WAN", wan.status, wan.status == "ok" ? "ok" : "bad"), wan.wan_ip && stat("WAN IP", esc(wan.wan_ip)),
-    www.latency != null && stat("Internet latency", www.latency + " ms"),
-    www.xput_down ? stat("Last speed test", "↓ " + www.xput_down.toFixed(0) + " / ↑ " + (www.xput_up || 0).toFixed(0) + " Mbps") : "",
-    hl.wlan && stat("Wi-Fi clients", hl.wlan.num_user ?? 0), hl.lan && stat("Wired clients", hl.lan.num_user ?? 0),
-  ].filter(Boolean).join("");
-  $("unifi").innerHTML = `<div class="row">${chips}</div><div class="tablewrap"><table><thead><tr><th></th><th>Device</th><th>Model</th><th>IP</th><th>Clients</th><th>Uptime</th><th>Firmware</th></tr></thead><tbody>` +
-    u.devices.map(d => `<tr class="${d.up ? "" : "off"}"><td><span class="dot ${d.up ? "up" : ""}"></span></td><td>${esc(d.name)}</td><td>${esc(d.model)}</td><td>${esc(d.ip)}</td>
-      <td>${d.num_sta ?? "—"}</td><td>${d.up && d.uptime ? dur(d.uptime) : "offline"}</td><td>${esc(d.version)}${d.upgradable ? ' <span class="badge">update</span>' : ""}</td></tr>`).join("") + "</tbody></table></div>";
-}
-
-function mergedDevices() {
-  const out = {}, u = data.unifi || {}, uc = {};
-  (u.clients || []).forEach(c => uc[c.mac] = c);
-  for (const [k, d] of Object.entries(data.devices)) { const c = uc[d.mac]; out[k] = { ...d, u: c, online: c ? true : d.online, last_seen: c ? Date.now() / 1000 : d.last_seen, ip: c?.ip || d.ip, host: d.host || c?.name || c?.host }; delete uc[d.mac]; }
-  for (const c of Object.values(uc)) out["unifi:" + c.mac] = { mac: c.mac, ip: c.ip || "", name: "", host: c.name || c.host, vendor: c.oui || "", online: true, last_seen: Date.now() / 1000, rtt: null, u: c, unifiOnly: true };
-  return out;
-}
-const conn = c => !c ? "" : c.is_wired ? `🔌 ${esc(c.via || "Wired")}${c.sw_port ? " · port " + c.sw_port : ""}` : `📶 ${esc(c.essid || "Wi-Fi")}${c.signal ? " · " + c.signal + " dBm" : ""}<div class="muted">${esc(c.via)}</div>`;
-
-function renderDevices() {
-  const q = $("filter").value.toLowerCase(), all = mergedDevices();
-  const rows = Object.entries(all).filter(([, d]) => !q || JSON.stringify(d).toLowerCase().includes(q))
-    .sort(([, a], [, b]) => (b.online - a.online) || a.ip.localeCompare(b.ip, undefined, { numeric: true }));
-  $("devs").innerHTML = rows.map(([k, d]) => `<tr class="${d.online ? "" : "off"}"><td><span class="dot ${d.online ? "up" : ""}"></span></td>
-    <td><span class="name" data-name="${esc(k)}">${esc(d.name || d.host || "Unnamed device")}</span>${d.new ? `<span class="badge" data-ack="${esc(k)}" title="Dismiss">NEW</span>` : ""}</td>
-    <td>${esc(d.ip)}</td><td class="muted">${esc(d.mac)} ${esc(d.vendor)}</td><td>${conn(d.u)}</td><td>${d.online && d.rtt != null ? d.rtt.toFixed(0) + " ms" : "—"}</td>
-    <td class="muted">${d.online ? "now" : ago(d.last_seen)}</td><td>${d.online || d.unifiOnly ? "" : `<button class="ghost" data-forget="${esc(k)}" title="Forget">✕</button>`}</td></tr>`).join("")
-    || '<tr><td colspan="8" class="muted">No devices yet.</td></tr>';
+const nameOf = c => c.name || c.host || "Unnamed device";
+const isNew = c => c.first_seen && !data.acked.includes(c.mac) && Date.now() / 1000 - c.first_seen < data.new_days * 86400;
+const link = c => c.is_wired ? "" : (c.signal ? c.signal + " dBm" : "") + (c.rx_rate ? ` · ${(c.rx_rate / 1000).toFixed(0)} Mbps` : "");
+function renderClients() {
+  const q = $("filter").value.toLowerCase(), all = $("show").value == "all";
+  const list = [...(data.clients_online || []), ...(all ? data.clients_known || [] : [])].filter(c => !q || JSON.stringify(c).toLowerCase().includes(q))
+    .sort((a, b) => (b.online - a.online) || String(a.ip || "").localeCompare(String(b.ip || ""), undefined, { numeric: true }));
+  $("clientCount").textContent = `(${(data.clients_online || []).length} online)`;
+  $("clients").innerHTML = list.map(c => `<tr class="${c.online ? "" : "off"}"><td><span class="dot ${c.online ? "up" : ""}"></span></td>
+    <td>${esc(nameOf(c))}${c.is_guest ? '<span class="pill">guest</span>' : ""}${isNew(c) ? `<span class="badge" data-ack="${esc(c.mac)}" title="Dismiss">NEW</span>` : ""}</td>
+    <td>${esc(c.ip)}</td><td class="muted">${esc(c.mac)} ${esc(c.oui)}</td>
+    <td>${c.online ? (c.is_wired ? `🔌 ${esc(c.via || "Wired")}${c.sw_port ? " · port " + c.sw_port : ""}` : `📶 ${esc(c.essid || "Wi-Fi")}<div class="muted">${esc(c.via)}${c.channel ? " · ch " + c.channel : ""}</div>`) : ""}</td>
+    <td class="muted">${link(c)}</td><td>${c.online ? fmtRate(c.rx) + " / " + fmtRate(c.tx) : "—"}</td>
+    <td class="muted">${fmtB(c.rx_total)} / ${fmtB(c.tx_total)}</td><td class="muted">${c.online ? "now" : ago(c.last_seen)}</td></tr>`).join("")
+    || '<tr><td colspan="9" class="muted">No clients.</td></tr>';
 }
 
 document.addEventListener("click", async e => {
-  const t = e.target;
-  if (t.dataset.del) { await api("/api/monitor/delete", { id: t.dataset.del }); load(); }
-  if (t.dataset.ack) { await api("/api/device", { key: t.dataset.ack, new: false }); load(); }
-  if (t.dataset.forget && confirm("Forget this device?")) { await api("/api/device", { key: t.dataset.forget, forget: true }); load(); }
-  if (t.dataset.name) {
-    const d = mergedDevices()[t.dataset.name], n = prompt("Name this device:", d.name || d.host || "");
-    if (n !== null) { await api("/api/device", { key: t.dataset.name, name: n, new: false, mac: d.mac, ip: d.ip }); load(); }
-  }
+  if (e.target.dataset.ack) { await fetch("/api/ack", { method: "POST", body: JSON.stringify({ mac: e.target.dataset.ack }) }); load(); }
 });
-$("scan").onclick = async () => { await api("/api/scan"); setTimeout(load, 500); };
-$("filter").oninput = () => data && renderDevices();
-$("filter").onfocus = () => editing = true; $("filter").onblur = () => editing = false;
-$("addMon").querySelector("[name=type]").onchange = e => $("addMon").querySelector("[name=port]").style.display = e.target.value == "tcp" ? "block" : "none";
-$("addMon").onsubmit = async e => { e.preventDefault(); const f = Object.fromEntries(new FormData(e.target));
-  const r = await api("/api/monitor", f); if (r.error) return alert(r.error); e.target.reset(); load(); };
-
+$("filter").oninput = $("show").onchange = () => data && renderClients();
 async function load() {
-  try { const s = await (await fetch("/api/status")).json(); render(s); $("updated").textContent = "Updated " + new Date().toLocaleTimeString(); }
+  try { const s = await (await fetch("/api/status")).json(); render(s); }
   catch { $("updated").textContent = "Disconnected – retrying…"; }
 }
 load(); setInterval(load, 5000);

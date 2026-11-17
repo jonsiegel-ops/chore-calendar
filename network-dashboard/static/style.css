@@ -21,3 +21,7 @@ th{color:var(--mut);font-weight:500;font-size:13px}tr.off td{opacity:.5}.name{cu
 .badge{background:var(--warn);color:#000;border-radius:6px;padding:0 6px;font-size:11px;margin-left:6px;cursor:pointer}
 .chip{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:3px 9px;font-size:13px}.chip.ok b{color:var(--ok)}.chip.bad b{color:var(--bad)}
 [hidden]{display:none!important}
+svg.spark.big{width:100%;height:46px}.lg{display:flex;justify-content:space-between;align-items:baseline}
+.ev{padding:6px 0;border-top:1px solid var(--line);font-size:13px}.ev:first-child{border-top:0}
+.pill{display:inline-block;background:var(--line);border-radius:6px;padding:0 7px;font-size:12px;margin-left:6px}
+.pill.off{color:var(--bad)}

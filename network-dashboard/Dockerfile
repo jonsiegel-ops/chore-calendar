@@ -1,7 +1,6 @@
 FROM python:3.12-alpine
 
-# ping for latency checks and the LAN sweep; tzdata for local times.
-RUN apk add --no-cache iputils tzdata
+RUN apk add --no-cache tzdata
 
 COPY server.py /app/
 COPY static /app/static
