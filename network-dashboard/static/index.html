@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Network Dashboard</title><link rel="stylesheet" href="style.css">
+</head><body>
+<header><h1>🌐 Network</h1><span id="updated" class="muted"></span></header>
+<main>
+  <section class="card wide" id="setup" hidden></section>
+  <section class="tiles" id="tiles"></section>
+  <section class="card"><h2>Internet</h2><div id="wan"></div></section>
+  <section class="card"><h2>Gateway</h2><div id="gw"></div></section>
+  <section class="card"><h2>Busiest clients</h2><div id="top"></div></section>
+  <section class="card wide"><h2>UniFi devices</h2><div class="tablewrap"><table><thead><tr><th></th><th>Device</th><th>Model</th><th>IP</th><th>Clients</th><th>CPU / Mem</th><th>Uptime</th><th>Firmware</th></tr></thead><tbody id="devices"></tbody></table></div></section>
+  <section class="card"><h2>Wi-Fi networks</h2><div id="wlans"></div></section>
+  <section class="card"><h2>Networks</h2><div id="nets"></div></section>
+  <section class="card"><h2>Recent events</h2><div id="events"></div></section>
+  <section class="card wide"><div class="row between"><h2>Clients <span id="clientCount" class="muted"></span></h2>
+    <div class="row"><select id="show"><option value="online">Online</option><option value="all">Online + offline</option></select><input id="filter" placeholder="Search…"></div></div>
+    <div class="tablewrap"><table><thead><tr><th></th><th>Name</th><th>IP</th><th>MAC / vendor</th><th>Connection</th><th>Link</th><th>Now ↓ / ↑</th><th>Total ↓ / ↑</th><th>Seen</th></tr></thead><tbody id="clients"></tbody></table></div>
+  </section>
+</main>
+<script src="app.js"></script></body></html>
