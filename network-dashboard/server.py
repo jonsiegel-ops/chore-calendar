@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Network dashboard: standard library only. Runs as a Home Assistant app or standalone."""
-import argparse, json, os, re, shutil, socket, subprocess, threading, time, urllib.request
+import argparse, json, os, re, shutil, socket, ssl, subprocess, threading, time, urllib.request
 from concurrent.futures import ThreadPoolExecutor
+from http import cookiejar
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
 DATA_DIR = os.environ.get("DASH_DATA_DIR") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
@@ -28,7 +29,7 @@ DEFAULT_CONFIG = {"subnet": "", "monitors": [
 
 state = {
     "started": time.time(), "system": {}, "net": {}, "monitors": {}, "devices": {},
-    "scan": {"running": False, "last": 0, "subnet": "", "duration": 0}, "gateway": "", "local_ip": "",
+    "unifi": {"enabled": False}, "scan": {"running": False, "last": 0, "subnet": "", "duration": 0}, "gateway": "", "local_ip": "",
 }
 config = {}
 _prev = {"cpu": None, "net": None}
@@ -221,6 +222,79 @@ def scanner():
         time.sleep(SCAN_EVERY)
 
 
+# ---------- UniFi (local controller API, read-only) ----------
+def unifi_options():
+    """Settings from the Home Assistant app options, or UNIFI_* environment variables when standalone."""
+    o = load_json("options.json", {}) if DATA_DIR.startswith("/data") else {}
+    def g(k, env, d=""): return o.get(k) if o.get(k) not in (None, "") else os.environ.get(env, d)
+    return {"url": str(g("unifi_url", "UNIFI_URL")).rstrip("/"), "user": g("unifi_username", "UNIFI_USERNAME"),
+            "password": g("unifi_password", "UNIFI_PASSWORD"), "site": g("unifi_site", "UNIFI_SITE", "default") or "default",
+            "verify": str(g("unifi_verify_ssl", "UNIFI_VERIFY_SSL", "false")).lower() == "true",
+            "os": str(g("unifi_os", "UNIFI_OS", "true")).lower() != "false"}
+
+class UniFi:
+    def __init__(self, o):
+        self.o, self.csrf = o, None
+        ctx = ssl.create_default_context()
+        if not o["verify"]: ctx.check_hostname = False; ctx.verify_mode = ssl.CERT_NONE
+        self.jar = cookiejar.CookieJar()
+        self.opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(self.jar),
+                                                  urllib.request.HTTPSHandler(context=ctx))
+
+    def _open(self, url, body=None):
+        req = urllib.request.Request(url, data=json.dumps(body).encode() if body is not None else None,
+                                     headers={"Content-Type": "application/json", **({"X-CSRF-Token": self.csrf} if self.csrf else {})})
+        with self.opener.open(req, timeout=10) as r:
+            self.csrf = r.headers.get("X-Updated-CSRF-Token") or r.headers.get("X-CSRF-Token") or self.csrf
+            return json.loads(r.read() or b"{}")
+
+    def login(self):
+        self.csrf = None
+        self._open(self.o["url"] + ("/api/auth/login" if self.o["os"] else "/api/login"),
+                   {"username": self.o["user"], "password": self.o["password"], "remember": True})
+
+    def get(self, what, retry=True):
+        base = self.o["url"] + ("/proxy/network" if self.o["os"] else "")
+        try: return self._open("%s/api/s/%s/%s" % (base, self.o["site"], what)).get("data", [])
+        except urllib.error.HTTPError as e:
+            if e.code == 401 and retry: self.login(); return self.get(what, False)
+            raise
+
+    def snapshot(self):
+        if not self.csrf and not self.jar: self.login()
+        clients, devices, health = self.get("stat/sta"), self.get("stat/device"), self.get("stat/health")
+        names = {d.get("mac"): d.get("name") or d.get("model") for d in devices}
+        pick = lambda d, *k: {x: d.get(x) for x in k}
+        return {
+            "clients": [dict(pick(c, "mac", "ip", "is_wired", "essid", "signal", "rssi", "uptime", "oui", "last_seen", "sw_port"),
+                             name=c.get("name") or "", host=c.get("hostname") or "",
+                             via=names.get(c.get("ap_mac") if not c.get("is_wired") else c.get("sw_mac"), ""),
+                             rx=c.get("rx_bytes-r", 0), tx=c.get("tx_bytes-r", 0)) for c in clients],
+            "devices": [dict(pick(d, "mac", "ip", "model", "type", "version", "uptime", "num_sta", "adopted"),
+                             name=d.get("name") or d.get("model") or d.get("mac"), up=d.get("state") == 1,
+                             upgradable=bool(d.get("upgradable"))) for d in devices],
+            "health": {h.get("subsystem"): pick(h, "status", "num_user", "num_adopted", "num_disconnected", "wan_ip", "latency",
+                                                "xput_up", "xput_down", "speedtest_lastrun", "uptime") for h in health},
+        }
+
+def unifi_loop():
+    o = unifi_options()
+    if not (o["url"] and o["user"] and o["password"]): return
+    api = UniFi(o)
+    with LOCK: state["unifi"] = {"enabled": True, "ok": False, "error": "Connecting…", "last": 0}
+    while True:
+        try:
+            snap = api.snapshot()
+            with LOCK: state["unifi"] = dict(snap, enabled=True, ok=True, error="", last=time.time())
+        except Exception as e:
+            msg = "Login rejected: check the username and password" if getattr(e, "code", 0) in (400, 401, 403) else \
+                  "Can't reach the controller: %s" % (getattr(e, "reason", None) or e)
+            api.csrf = None; api.jar.clear()
+            with LOCK: state["unifi"] = dict(state["unifi"], enabled=True, ok=False, error=msg)
+            print("UniFi:", msg, flush=True)
+        time.sleep(30)
+
+
 # ---------- HTTP ----------
 TYPES = {".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml"}
 
@@ -255,6 +329,10 @@ class Handler(BaseHTTPRequestHandler):
             threading.Thread(target=scan, daemon=True).start(); return self.send(200, {"ok": True})
         if p == "/api/device":
             known = load_json("devices.json", {}); d = known.get(b.get("key"))
+            if not d and str(b.get("key", "")).startswith("unifi:") and b.get("mac"):  # device only UniFi knows about
+                d = known[b["key"][6:]] = {"first_seen": time.time(), "name": "", "new": False, "mac": b["mac"], "ip": b.get("ip", ""),
+                                           "host": "", "last_seen": 0, "online": False}
+                b["key"] = b["key"][6:]
             if not d: return self.send(404, {"error": "unknown device"})
             if "name" in b: d["name"] = str(b["name"])[:60]
             if "new" in b: d["new"] = bool(b["new"])
@@ -284,7 +362,7 @@ def main():
     config.update(load_json("config.json", DEFAULT_CONFIG))
     if not os.path.exists(_path("config.json")): save_json("config.json", config)
     state["devices"] = load_json("devices.json", {})
-    for fn in (sampler, scanner): threading.Thread(target=fn, daemon=True).start()
+    for fn in (sampler, scanner, unifi_loop): threading.Thread(target=fn, daemon=True).start()
     print("Network dashboard running on http://0.0.0.0:%d" % port, flush=True)
     ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
 

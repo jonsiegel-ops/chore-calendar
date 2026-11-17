@@ -146,6 +146,8 @@ LAN (with friendly names and "new device" flags), custom ping/TCP/HTTP monitors,
 CPU, memory, disk and temperature. Install it like the chore chart (Settings → Apps → **Network Dashboard**),
 then open `http://<pi-ip>:8081`. See `network-dashboard/DOCS.md`.
 
+It can also read your **UniFi** controller (devices, Wi-Fi/wired connection, WAN health): see the UniFi section of `network-dashboard/DOCS.md`.
+
 Run locally: `python3 network-dashboard/server.py --port 8081`
 
 ## Install on Raspberry Pi OS (no Home Assistant)

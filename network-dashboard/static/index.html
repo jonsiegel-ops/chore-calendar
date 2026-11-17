@@ -13,10 +13,11 @@
       <button>+ Add monitor</button></form></section>
   <section class="card"><h2>Throughput</h2><div id="net"></div></section>
   <section class="card"><h2>This Pi</h2><div id="sys"></div></section>
+  <section class="card wide" id="unifiCard" hidden><h2>UniFi <span id="unifiInfo" class="muted"></span></h2><div id="unifi"></div></section>
   <section class="card wide"><div class="row between"><h2>Devices <span id="devCount" class="muted"></span></h2>
     <div class="row"><input id="filter" placeholder="Search…"><button id="scan">Scan now</button></div></div>
     <div class="muted" id="scanInfo"></div>
-    <div class="tablewrap"><table><thead><tr><th></th><th>Name</th><th>IP</th><th>MAC / vendor</th><th>Ping</th><th>Last seen</th><th></th></tr></thead><tbody id="devs"></tbody></table></div>
+    <div class="tablewrap"><table><thead><tr><th></th><th>Name</th><th>IP</th><th>MAC / vendor</th><th>Connection</th><th>Ping</th><th>Last seen</th><th></th></tr></thead><tbody id="devs"></tbody></table></div>
   </section>
 </main>
 <script src="app.js"></script></body></html>

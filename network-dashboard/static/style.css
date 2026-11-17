@@ -19,3 +19,5 @@ svg.spark{width:90px;height:24px}svg.spark path{fill:none;stroke:var(--acc);stro
 .tablewrap{overflow-x:auto}table{width:100%;border-collapse:collapse;margin-top:8px}th,td{text-align:left;padding:7px 8px;border-top:1px solid var(--line);white-space:nowrap}
 th{color:var(--mut);font-weight:500;font-size:13px}tr.off td{opacity:.5}.name{cursor:pointer;border-bottom:1px dashed var(--mut)}
 .badge{background:var(--warn);color:#000;border-radius:6px;padding:0 6px;font-size:11px;margin-left:6px;cursor:pointer}
+.chip{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:3px 9px;font-size:13px}.chip.ok b{color:var(--ok)}.chip.bad b{color:var(--bad)}
+[hidden]{display:none!important}
