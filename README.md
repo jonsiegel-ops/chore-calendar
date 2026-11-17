@@ -138,6 +138,16 @@ Click **Update**. Your kids, chores and stars are kept.
 | No weather on the fridge | In Settings, pick the weather entity and tap **Save**. The line under the picker shows what the fridge will get, or why there's nothing. |
 | Chores reset at the wrong time | Set your time zone in **Settings → System → General**, then restart the app. |
 
+## Network Dashboard (second Home Assistant app)
+
+This repository also contains **Network Dashboard** (`network-dashboard/`): a live view of your home
+network that runs on the same Pi. It shows internet and router latency, every device found on your
+LAN (with friendly names and "new device" flags), custom ping/TCP/HTTP monitors, live throughput, and the Pi's
+CPU, memory, disk and temperature. Install it like the chore chart (Settings → Apps → **Network Dashboard**),
+then open `http://<pi-ip>:8081`. See `network-dashboard/DOCS.md`.
+
+Run locally: `python3 network-dashboard/server.py --port 8081`
+
 ## Install on Raspberry Pi OS (no Home Assistant)
 
 ```bash
